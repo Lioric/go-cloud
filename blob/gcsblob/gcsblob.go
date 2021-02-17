@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,6 +61,10 @@ type reader struct {
 	size        int64
 	contentType string
 	updated     time.Time
+
+	// Tiddler metadata
+	revision int
+	metadata map[string]string
 }
 
 func (r *reader) Read(p []byte) (int, error) {
@@ -76,13 +81,29 @@ func (r *reader) Attrs() *driver.ObjectAttrs {
 		Size:        r.size,
 		ContentType: r.contentType,
 		ModTime:     r.updated,
+
+		// Tiddler metadata
+		Revision: r.revision,
+		Fields:   r.metadata,
 	}
+}
+
+// CreateUserArea setups a new area with the given id
+// Currently a no op to satisfy interface
+//
+// Different providers enforce different set of rules for number of bucket creation
+// so for the time being, on object storage platforms, the area is part of the object key,
+// and areas are within the same bucket
+// (if this restrictions are lifted by object storage providers, a per area bucket might be considered)
+func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) error {
+	return nil
 }
 
 // NewRangeReader returns a Reader that reads part of an object, reading at most
 // length bytes starting at the given offset. If length is 0, it will read only
 // the metadata. If length is negative, it will read till the end of the object.
-func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64) (driver.Reader, error) {
+func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
+	key = blob.GetBlobName(key)
 	if offset < 0 {
 		return nil, fmt.Errorf("negative offset %d", offset)
 	}
@@ -96,11 +117,18 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 			}
 			return nil, err
 		}
+
+		rev, _ := strconv.ParseInt(attrs.Metadata["revision"], 10, 0)
+
 		return &reader{
 			body:        emptyBody,
 			size:        attrs.Size,
 			contentType: attrs.ContentType,
 			updated:     attrs.Updated,
+
+			// Tiddler metadata
+			revision: int(rev),
+			metadata: attrs.Metadata,
 		}, nil
 	}
 	r, err := obj.NewRangeReader(ctx, offset, length)
@@ -131,14 +159,55 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 //
 // The caller must call Close on the returned Writer when done writing.
 func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType string, opts *driver.WriterOptions) (driver.Writer, error) {
+	key = blob.GetBlobName(key)
 	bkt := b.client.Bucket(b.name)
 	obj := bkt.Object(key)
 	w := obj.NewWriter(ctx)
 	w.ContentType = contentType
 	if opts != nil {
 		w.ChunkSize = bufferSize(opts.BufferSize)
+		// Tiddler metadata
+		w.Metadata = opts.Metadata
+		w.Metadata["revision"] = strconv.Itoa(opts.Revision)
 	}
 	return w, nil
+}
+
+// Moves the object associated with key to a new location. It is a no-op if that object
+// does not exist.
+func (b *bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
+	reader, err := b.NewRangeReader(ctx, keySrc, 0, -1, false)
+	if err != nil {
+		return err
+	}
+
+	defer reader.Close()
+
+	buffer, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+
+	if err != nil {
+		return err
+	}
+
+	w, err := b.NewTypedWriter(ctx, keyDst, "application/octet-stream", nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buffer)
+
+	if err != nil {
+		return err
+	}
+
+	if err = w.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Delete deletes the object associated with key. It is a no-op if that object

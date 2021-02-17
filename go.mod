@@ -37,18 +37,16 @@ require (
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/jtolds/gls v0.0.0-20170503224851-77f18212c9c7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rs/zerolog v1.18.0 // indirect
 	github.com/smartystreets/assertions v0.0.0-20180301161246-7678a5452ebe // indirect
 	github.com/smartystreets/goconvey v0.0.0-20180222194500-ef6db91d284a // indirect
 	github.com/smartystreets/gunit v0.0.0-20180314194857-6f0d6275bdcd // indirect
 	github.com/stretchr/testify v1.2.1 // indirect
 	go.opencensus.io v0.12.0
-	golang.org/x/crypto v0.0.0-20180718160520-a2144134853f
-	golang.org/x/net v0.0.0-20180702212446-ed29d75add3d
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 	golang.org/x/oauth2 v0.0.0-20180603041954-1e0a3fa8ba9a
-	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect
-	golang.org/x/sys v0.0.0-20180329131831-378d26f46672 // indirect
-	golang.org/x/text v0.3.0 // indirect
-	golang.org/x/tools v0.0.0-20180314180217-d853e8088c62
+	golang.org/x/tools v0.0.0-20190828213141-aed303cbaa74
 	google.golang.org/api v0.0.0-20180606215403-8e9de5a6de6d
 	google.golang.org/appengine v1.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20180627194029-ff3583edef7d
@@ -57,3 +55,5 @@ require (
 	gopkg.in/pipe.v2 v2.0.0-20140414041502-3c2ca4d52544
 	gopkg.in/yaml.v2 v2.2.1 // indirect
 )
+
+go 1.13

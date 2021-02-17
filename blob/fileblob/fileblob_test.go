@@ -79,3 +79,42 @@ func TestNewBucket(t *testing.T) {
 		}
 	})
 }
+
+func Test_resolveLocalFSPath(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "resolveLocalFSPath 0 level",
+			args: args{s: "vInterface/data/plugin loader should request external module once"},
+			want: "vInterface/data/plugin loader should request external module once",
+		},
+		{
+			name: "resolveLocalFSPath 1 level",
+			args: args{s: "vInterface/data/tasks/plugin loader/plugin loader should request external module once"},
+			want: "vInterface/data/tasks" + sFolderChar + "/plugin loader" + sFolderChar + "/plugin loader should request external module once",
+		},
+		{
+			name: "resolveLocalFSPath 2 level",
+			args: args{s: "vInterface/data/tasks/plugin loader/plugin loader should request external module once"},
+			want: "vInterface/data/tasks" + sFolderChar + "/plugin loader" + sFolderChar + "/plugin loader should request external module once",
+		},
+		{
+			name: "resolveLocalFSPath 3 level",
+			args: args{s: "vInterface/data/tasks/plugin loader/list/plugin loader should request external module once"},
+			want: "vInterface/data/tasks" + sFolderChar + "/plugin loader" + sFolderChar + "/list" + sFolderChar + "/plugin loader should request external module once",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveLocalFSPath(tt.args.s); got != tt.want {
+				t.Errorf("resolveLocalFSPath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

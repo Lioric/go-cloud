@@ -59,6 +59,13 @@ type WriterOptions struct {
 	// write in a single request, if supported. Larger objects will be split into
 	// multiple requests.
 	BufferSize int
+
+	// Tiddler metadata
+	Metadata map[string]string
+	Revision int
+	// Extra options for platform specific implementations
+	Id    int
+	Extra map[string]string
 }
 
 // ObjectAttrs contains metadata of an object.
@@ -69,17 +76,31 @@ type ObjectAttrs struct {
 	ContentType string
 	// ModTime is the modified time of the blob object. Will be time.Time zero value if unknown.
 	ModTime time.Time
+
+	// Object metadata
+	Name     string
+	Fields   map[string]string
+	Revision int
+
+	Id    int
+	Extra string // platform specific
 }
 
 // Bucket provides read, write and delete operations on objects within it on the
 // blob service.
 type Bucket interface {
+	// CreateUserArea setups a new area with the given id
+	//
+	// only local filesystem need to support this
+	// object storage based providers use object whole path as its key, so there is no need to pre create or setup its area
+	CreateArea(ctx context.Context, area string, groups []string) error
+
 	// NewRangeReader returns a Reader that reads part of an object, reading at
 	// most length bytes starting at the given offset. If length is 0, it will read
 	// only the metadata. If length is negative, it will read till the end of the
 	// object. If the specified object does not exist, NewRangeReader must return
 	// an error whose BlobError method returns NotFound.
-	NewRangeReader(ctx context.Context, key string, offset, length int64) (Reader, error)
+	NewRangeReader(ctx context.Context, key string, offset, length int64, exactName bool) (Reader, error)
 
 	// NewTypedWriter returns Writer that writes to an object associated with key.
 	//
@@ -94,8 +115,9 @@ type Bucket interface {
 	// The caller must call Close on the returned Writer when done writing.
 	NewTypedWriter(ctx context.Context, key string, contentType string, opt *WriterOptions) (Writer, error)
 
-	// Delete deletes the object associated with key. If the specified object does
-	// not exist, NewRangeReader must return an error whose BlobError method
-	// returns NotFound.
+	// Move moves the object associated with key from keySrc to KeyDst
+	Move(ctx context.Context, keySrc string, keyDst string) error
+
+	// Delete deletes the object associated with key.
 	Delete(ctx context.Context, key string) error
 }

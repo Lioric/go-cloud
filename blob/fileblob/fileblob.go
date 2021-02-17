@@ -36,9 +36,27 @@ import (
 	"github.com/google/go-cloud/blob/driver"
 )
 
+// Character to append to folder name to diferentiate from filenames
+// sample:
+//  object unit title: someTitle
+//  object unit title with folder structure: someTitle/subFile
+//
+//  folder structure:
+//    \-- someTitle./ -> subfolder
+//    \---- subFile -> file inside subfolder
+//    \-- someTitle -> file
+// const sFolderChar = "."
+
 type bucket struct {
 	dir string
 }
+
+var DataDir = ""
+var MetaDir = ""
+var RevisionDir = ""
+var AttrsExt = ""
+
+// var ObjectExt = ""
 
 // NewBucket creates a new bucket that reads and writes to dir.
 // dir must exist.
@@ -53,15 +71,64 @@ func NewBucket(dir string) (*blob.Bucket, error) {
 	return blob.NewBucket(&bucket{dir}), nil
 }
 
+func resolveLocalFSPath(s string) string {
+	pathSep := "/"
+	newPathSep := pathSep
+	// newPathSep := sFolderChar + "/"
+
+	n := 0
+	// Compute number of replacements.
+	if m := strings.Count(s, pathSep); m < 3 {
+		return s // avoid allocation
+	} else {
+		n = m - 2
+	}
+
+	index1 := strings.Index(s, pathSep) + len(pathSep)
+	index2 := strings.Index(s[index1:], pathSep) + len(pathSep)
+	// start += strings.Index(s[start:], pathSep)
+	start := index1 + index2
+
+	// fmt.Println(s[index1:])
+	// fmt.Println(s[start:])
+
+	// Apply replacements to buffer.
+	t := make([]byte, len(s)+n*(len(newPathSep)-len(pathSep)))
+	w := copy(t[0:], s[0:start])
+	for i := 0; i < n; i++ {
+		j := start
+		j += strings.Index(s[start:], pathSep)
+		w += copy(t[w:], s[start:j])
+		w += copy(t[w:], newPathSep)
+		start = j + len(pathSep)
+	}
+	w += copy(t[w:], s[start:])
+	return string(t[0:w])
+}
+
 // resolvePath converts a key into a relative filesystem path. It guarantees
 // that there will only be one valid key for a given path and that the resulting
 // path will not reach outside the directory.
-func resolvePath(key string) (string, error) {
-	for _, c := range key {
-		if !('A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || '0' <= c && c <= '9' || c == '/' || c == '.' || c == ' ' || c == '_' || c == '-') {
-			return "", fmt.Errorf("contains invalid character %q", c)
-		}
+func resolvePath(rawKey string, exactKeyName bool) (string, error) {
+	key := blob.GetBlobName(rawKey)
+
+	key = resolveLocalFSPath(key)
+
+	if exactKeyName != true {
+		key += ".mb"
 	}
+
+	// key = resolveLocalFSPath(key) + ".mb"
+
+	// objName = strings.ReplaceAll(objName, "/", sFolderChar+"/")
+
+	// for _, c := range key {
+	// 	if c == '<' || c == '>' || c == ':' || c == '"' || c == '|' || c == '?' || c == '*' || c == '^' || c == '~' || c == '\'' {
+	// 		// <|>|\:|\"|\||\?|\*|\^|~|\'
+	// 		// if !('A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || '0' <= c && c <= '9' || c == '/' || c == '.' || c == ' ' || c == '_' || c == '-' || c == '$' || c == '@') {
+	// 		return "", fmt.Errorf("contains invalid character %q", c)
+	// 	}
+	// }
 	if cleaned := slashpath.Clean(key); key != cleaned {
 		return "", fmt.Errorf("not a clean slash-separated path")
 	}
@@ -74,18 +141,20 @@ func resolvePath(key string) (string, error) {
 	if strings.HasPrefix(key, "../") {
 		return "", fmt.Errorf("starts with \"../\"")
 	}
+
 	return filepath.FromSlash(key), nil
+	// return filepath.FromSlash(key) + ObjectExt, nil
 }
 
-func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64) (driver.Reader, error) {
-	relpath, err := resolvePath(key)
+func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
+	relpath, err := resolvePath(key, exactKeyName)
 	if err != nil {
 		return nil, fmt.Errorf("open file blob %s: %v", key, err)
 	}
 	path := filepath.Join(b.dir, relpath)
-	if strings.HasSuffix(path, attrsExt) {
-		return nil, fmt.Errorf("open file blob %s: extension %q cannot be directly read", key, attrsExt)
-	}
+	// if strings.HasSuffix(path, AttrsExt) {
+	// 	return nil, fmt.Errorf("open file blob %s: extension %q cannot be directly read", key, AttrsExt)
+	// }
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -93,17 +162,18 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 		}
 		return nil, fmt.Errorf("open file blob %s: %v", key, err)
 	}
-	xa, err := getAttrs(path)
-	if err != nil {
-		return nil, fmt.Errorf("open file attributes %s: %v", key, err)
-	}
-	if length == 0 {
-		return reader{
-			size:    info.Size(),
-			modTime: info.ModTime(),
-			xa:      xa,
-		}, nil
-	}
+	// TASK: should we move getAttr only to getMetadata code path?
+	// xa, err := getAttrs(path)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("open file attributes %s: %v", key, err)
+	// }
+	// if length == 0 {
+	// 	return reader{
+	// 		size:    info.Size(),
+	// 		modTime: info.ModTime(),
+	// 		xa:      xa,
+	// 	}, nil
+	// }
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open file blob %s: %v", key, err)
@@ -122,7 +192,7 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 		c:       f,
 		size:    info.Size(),
 		modTime: info.ModTime(),
-		xa:      xa,
+		xa:      nil,
 	}, nil
 }
 
@@ -131,7 +201,7 @@ type reader struct {
 	c       io.Closer
 	size    int64
 	modTime time.Time
-	xa      xattrs
+	xa      *xattrs
 }
 
 func (r reader) Read(p []byte) (int, error) {
@@ -153,27 +223,76 @@ func (r reader) Attrs() *driver.ObjectAttrs {
 		Size:        r.size,
 		ContentType: r.xa.ContentType,
 		ModTime:     r.modTime,
+		// Tiddler metadata
+		Id:       r.xa.Id,
+		Name:     r.xa.Name,
+		Fields:   r.xa.Meta,
+		Revision: r.xa.Revision,
+		Extra:    r.xa.Extra["extraFields"],
 	}
 }
 
+func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) error {
+	if area == "." {
+		return fmt.Errorf("area invalid path \".\"")
+	}
+	if strings.Contains(area, "../") {
+		return fmt.Errorf("area starts with \"../\"")
+	}
+
+	path := filepath.Join(b.dir, area)
+	err := os.Mkdir(path, 0777)
+	if err != nil && os.IsExist(err) == false {
+		return fmt.Errorf("Create area %s: %v", area, err)
+	}
+
+	for _, group := range groups {
+		meta := filepath.Join(path, group)
+		err = os.Mkdir(meta, 0777)
+		if err != nil && os.IsExist(err) == false {
+			return fmt.Errorf("Create group in %s: %v", area, err)
+		}
+	}
+
+	return nil
+}
+
 func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType string, opt *driver.WriterOptions) (driver.Writer, error) {
-	relpath, err := resolvePath(key)
+	relpath, err := resolvePath(key, false)
 	if err != nil {
 		return nil, fmt.Errorf("open file blob %s: %v", key, err)
 	}
 	path := filepath.Join(b.dir, relpath)
-	if strings.HasSuffix(path, attrsExt) {
-		return nil, fmt.Errorf("open file blob %s: extension %q is reserved and cannot be used", key, attrsExt)
+	if strings.HasSuffix(path, AttrsExt) {
+		return nil, fmt.Errorf("open file blob %s: extension %q is reserved and cannot be used", key, AttrsExt)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
-		return nil, fmt.Errorf("open file blob %s: %v", key, err)
-	}
+
 	f, err := os.Create(path)
 	if err != nil {
-		return nil, fmt.Errorf("open file blob %s: %v", key, err)
+		// if sub directory structure needs to be created, create it and test file creation again
+		if os.IsNotExist(err) {
+			pathErr := os.MkdirAll(filepath.Dir(path), 0777)
+			if pathErr == nil {
+				// Retry file creation
+				f, err = os.Create(path)
+				if err != nil {
+					return nil, fmt.Errorf("open file blob %s: %v", key, err)
+				}
+			} else {
+				return nil, fmt.Errorf("open file blob %s: %v", key, pathErr)
+			}
+		} else {
+			// Other file creation related error
+			return nil, fmt.Errorf("open file blob %s: %v", key, err)
+		}
 	}
-	attrs := xattrs{
+
+	attrs := &xattrs{
 		ContentType: contentType,
+		// Tiddler metadata
+		Meta:     opt.Metadata,
+		Revision: opt.Revision,
+		Extra:    opt.Extra,
 	}
 	return &writer{
 		w:     f,
@@ -185,7 +304,7 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType str
 type writer struct {
 	w     io.WriteCloser
 	path  string
-	attrs xattrs
+	attrs *xattrs
 }
 
 func (w writer) Write(p []byte) (n int, err error) {
@@ -199,14 +318,52 @@ func (w writer) Close() error {
 	return w.w.Close()
 }
 
+func (b *bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
+	src, err := resolvePath(keySrc, false)
+	if err != nil {
+		return fmt.Errorf("move file blob src %s: %v", keySrc, err)
+	}
+
+	dst, err := resolvePath(keyDst, false)
+	if err != nil {
+		return fmt.Errorf("move file blob dst %s: %v", keyDst, err)
+	}
+
+	curName := filepath.Join(b.dir, src)
+	fsName := filepath.Join(b.dir, dst)
+	// curName := filepath.Join(b.dir, objName) + "." + TypeObject
+	// fsName := filepath.Join(b.dir, newObjName) + "." + TypeObject
+	err = os.Rename(curName, fsName)
+	if err != nil {
+		// if sub directory structure needs to be created, create it and test file creation again
+		if os.IsNotExist(err) {
+			pathErr := os.MkdirAll(filepath.Dir(fsName), 0777)
+			if pathErr == nil {
+				// Retry file creation
+				err = os.Rename(curName, fsName)
+				if err != nil {
+					return err
+				}
+			} else {
+				return pathErr
+			}
+		} else {
+			// Other file creation related error
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (b *bucket) Delete(ctx context.Context, key string) error {
-	relpath, err := resolvePath(key)
+	relpath, err := resolvePath(key, false)
 	if err != nil {
 		return fmt.Errorf("delete file blob %s: %v", key, err)
 	}
 	path := filepath.Join(b.dir, relpath)
-	if strings.HasSuffix(path, attrsExt) {
-		return fmt.Errorf("delete file blob %s: extension %q cannot be directly deleted", key, attrsExt)
+	if strings.HasSuffix(path, AttrsExt) {
+		return fmt.Errorf("delete file blob %s: extension %q cannot be directly deleted", key, AttrsExt)
 	}
 	err = os.Remove(path)
 	if err != nil {
@@ -215,7 +372,11 @@ func (b *bucket) Delete(ctx context.Context, key string) error {
 		}
 		return fmt.Errorf("delete file blob %s: %v", key, err)
 	}
-	if err = os.Remove(path + attrsExt); err != nil && !os.IsNotExist(err) {
+	// Files are moved to the recyclebin first, before thay can be removed from filesystem
+	// and there .meta files are placed next to the real file, so delete .meta file in same directory
+	metaFile := path + AttrsExt
+	// metaFile := strings.Replace(path, DataDir, MetaDir, 1) + AttrsExt
+	if err = os.Remove(metaFile); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("delete file blob %s: %v", key, err)
 	}
 	return nil

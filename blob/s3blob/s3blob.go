@@ -57,6 +57,10 @@ type reader struct {
 	size        int64
 	contentType string
 	modTime     time.Time
+
+	// Tiddler metadata
+	revision int
+	metadata map[string]string
 }
 
 func (r *reader) Read(p []byte) (int, error) {
@@ -73,6 +77,9 @@ func (r *reader) Attrs() *driver.ObjectAttrs {
 		Size:        r.size,
 		ContentType: r.contentType,
 		ModTime:     r.modTime,
+		// Tiddler metadata
+		Revision: r.revision,
+		Fields:   r.metadata,
 	}
 }
 
@@ -89,6 +96,13 @@ type writer struct {
 	donec       chan struct{} // closed when done writing
 	// The following fields will be written before donec closes:
 	err error
+
+	// Tiddler specific meta attributes
+	revision int
+	metadata map[string]string
+
+	// Extra options for platform specific implementationso
+	extra map[string]string
 }
 
 // Write appends p to w. User must call Close to close the w after done writing.
@@ -106,6 +120,19 @@ func (w *writer) Write(p []byte) (int, error) {
 	return w.w.Write(p)
 }
 
+func (w *writer) createMetadata() map[string]*string {
+	var metadata map[string]*string
+	if w.metadata != nil {
+		metadata = aws.StringMap(w.metadata)
+	} else {
+		metadata = make(map[string]*string)
+	}
+
+	rev := strconv.Itoa(w.revision)
+	metadata["revision"] = &rev
+	return metadata
+}
+
 func (w *writer) open() error {
 	pr, pw := io.Pipe()
 	w.w = pw
@@ -118,6 +145,7 @@ func (w *writer) open() error {
 			ContentType: aws.String(w.contentType),
 			Key:         aws.String(w.key),
 			Body:        pr,
+			Metadata:    w.createMetadata(),
 		})
 		if err != nil {
 			w.err = err
@@ -166,7 +194,8 @@ type bucket struct {
 // NewRangeReader returns a reader that reads part of an object, reading at most
 // length bytes starting at the given offset. If length is 0, it will read only
 // the metadata. If length is negative, it will read till the end of the object.
-func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64) (driver.Reader, error) {
+func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
+	key = blob.GetBlobName(key)
 	if offset < 0 {
 		return nil, fmt.Errorf("negative offset %d", offset)
 	}
@@ -226,12 +255,33 @@ func (b *bucket) newMetadataReader(ctx context.Context, key string) (driver.Read
 		}
 		return nil, err
 	}
+
+	val := aws.StringValue(resp.Metadata["revision"])
+	revision, _ := strconv.ParseInt(val, 10, 0)
+	intRevision := int(revision)
+	rev := aws.IntValue(&intRevision)
+
 	return &reader{
 		body:        emptyBody,
 		contentType: aws.StringValue(resp.ContentType),
 		size:        aws.Int64Value(resp.ContentLength),
 		modTime:     aws.TimeValue(resp.LastModified),
+
+		// Tiddler metadata
+		revision: rev,
+		metadata: aws.StringValueMap(resp.Metadata),
 	}, nil
+}
+
+// CreateUserArea setups a new area with the given id
+// currently a no op to satisfy interface
+//
+// Different providers enforce different set of rules for number of bucket creation
+// so for the time being, on object storage platforms, the area is part of the object key,
+// and areas are within the same bucket
+// (if this restrictions are lifted by object storage providers, a per area bucket might be considered)
+func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) error {
+	return nil
 }
 
 // NewTypedWriter returns a writer that writes to an object associated with key.
@@ -245,6 +295,7 @@ func (b *bucket) newMetadataReader(ctx context.Context, key string) (driver.Read
 //
 // The caller must call Close on the returned writer when done writing.
 func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType string, opts *driver.WriterOptions) (driver.Writer, error) {
+	key = blob.GetBlobName(key)
 	w := &writer{
 		bucket:      b.name,
 		ctx:         ctx,
@@ -255,8 +306,49 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType str
 	}
 	if opts != nil {
 		w.bufferSize = opts.BufferSize
+		// Tiddler version metadata
+		w.revision = opts.Revision
+		w.metadata = opts.Metadata
+		w.extra = opts.Extra
 	}
 	return w, nil
+}
+
+// Moves the object associated with key to a new location. It is a no-op if that object
+// does not exist.
+func (b *bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
+	reader, err := b.NewRangeReader(ctx, keySrc, 0, -1, false)
+	if err != nil {
+		return err
+	}
+
+	defer reader.Close()
+
+	buffer, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+
+	if err != nil {
+		return err
+	}
+
+	w, err := b.NewTypedWriter(ctx, keyDst, "application/octet-stream", nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(buffer)
+
+	if err != nil {
+		return err
+	}
+
+	if err = w.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Delete deletes the object associated with key.

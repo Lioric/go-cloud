@@ -22,6 +22,7 @@ import (
 	"errors"
 	"mime"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/google/go-cloud/blob/driver"
@@ -57,6 +58,11 @@ func (r *Reader) Size() int64 {
 // This is optional and will be time.Time zero value if unknown.
 func (r *Reader) ModTime() time.Time {
 	return r.r.Attrs().ModTime
+}
+
+// Attrs returns metadata attributes of the blob object.
+func (r *Reader) Attrs() *driver.ObjectAttrs {
+	return r.r.Attrs()
 }
 
 // Writer implements io.WriteCloser to write to blob. It must be closed after
@@ -145,12 +151,21 @@ func NewBucket(b driver.Bucket) *Bucket {
 	return &Bucket{b: b}
 }
 
+// CreateUserArea setups a new area with the given id
+//
+// only local filesystem need to support this
+// object storage based providers use object whole path as its key, so there is no need to pre create or setup its area
+func (b *Bucket) CreateArea(ctx context.Context, area string, groups []string) error {
+	return b.b.CreateArea(ctx, area, groups)
+}
+
 // NewReader returns a Reader to read from an object, or an error when the object
 // is not found by the given key, which can be checked by calling IsNotExist.
 //
 // The caller must call Close on the returned Reader when done reading.
-func (b *Bucket) NewReader(ctx context.Context, key string) (*Reader, error) {
-	return b.NewRangeReader(ctx, key, 0, -1)
+// if exactName is true, the underlaying implementation must use the name exactly as provided
+func (b *Bucket) NewReader(ctx context.Context, key string, exactKeyName bool) (*Reader, error) {
+	return b.NewRangeReader(ctx, key, 0, -1, exactKeyName)
 }
 
 // NewRangeReader returns a Reader that reads part of an object, reading at
@@ -160,11 +175,11 @@ func (b *Bucket) NewReader(ctx context.Context, key string) (*Reader, error) {
 // checked by calling IsNotExist.
 //
 // The caller must call Close on the returned Reader when done reading.
-func (b *Bucket) NewRangeReader(ctx context.Context, key string, offset, length int64) (*Reader, error) {
+func (b *Bucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (*Reader, error) {
 	if offset < 0 {
 		return nil, errors.New("new blob range reader: offset must be non-negative")
 	}
-	r, err := b.b.NewRangeReader(ctx, key, offset, length)
+	r, err := b.b.NewRangeReader(ctx, key, offset, length, exactKeyName)
 	return &Reader{r: r}, newBlobError(err)
 }
 
@@ -184,7 +199,13 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opt *WriterOptions) 
 	if opt != nil {
 		dopt = &driver.WriterOptions{
 			BufferSize: opt.BufferSize,
+			// Tiddler metadata
+			Id:       opt.Id,
+			Revision: opt.Revision,
+			Metadata: opt.Meta,
+			Extra:    opt.Extra,
 		}
+
 		if opt.ContentType != "" {
 			t, p, err := mime.ParseMediaType(opt.ContentType)
 			if err != nil {
@@ -202,6 +223,12 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opt *WriterOptions) 
 		opt:    dopt,
 		buf:    bytes.NewBuffer([]byte{}),
 	}, nil
+}
+
+// Move the object associated with key to a new location. It returns an error if that
+// object does not exist, which can be checked by calling IsNotExist.
+func (b *Bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
+	return newBlobError(b.b.Move(ctx, keySrc, keyDst))
 }
 
 // Delete deletes the object associated with key. It returns an error if that
@@ -229,6 +256,13 @@ type WriterOptions struct {
 	// then it will be inferred from the content using the algorithm described at
 	// http://mimesniff.spec.whatwg.org/
 	ContentType string
+
+	// Tiddler metadata
+	Meta     map[string]string
+	Revision int
+	// Extra options for platform specific implementations
+	Id    int
+	Extra map[string]string
 }
 
 type blobError struct {
@@ -257,4 +291,53 @@ func IsNotExist(err error) bool {
 		return e.kind == driver.NotFound
 	}
 	return false
+}
+
+var sObjectNameChars *regexp.Regexp
+
+func init() {
+	// TASK: review valid file name characters in different platforms
+
+	// Amazon characters to avoid:
+	//	Backslash ("\")
+	// Left curly brace ("{")
+	// Non-printable ASCII characters (128–255 decimal characters)
+	// Caret ("^")
+	// Right curly brace ("}")
+	// Percent character ("%")
+	// Grave accent / back tick ("`")
+	// Right square bracket ("]")
+	// Quotation marks
+	// 'Greater Than' symbol (">")
+	// Left square bracket ("[")
+	// Tilde ("~")
+	// 'Less Than' symbol ("<")
+	// 'Pound' character ("#")
+	// Vertical bar / pipe ("|")
+
+	// Google Cloud characters to avoid:
+	// [ ] * ? #
+
+	// Windows characters to avoid
+	// < > : " / \ | ? *
+
+	sObjectNameChars = regexp.MustCompile(`<|>|\:|\"|\||\?|\*|\^|~|\'`)
+}
+
+func GetBlobName(name string) string {
+	objName := name
+
+	// var objName string
+
+	// // TASK: review system prefix
+	// if strings.HasPrefix(name, "$:/") {
+	// 	objName = strings.Replace(name, "$:/", "_system/", 1)
+	// } else {
+	// 	objName = name
+	// }
+
+	// cleanup (and sanitize) resulting blob name (replace non valid characters)
+	blobName := sObjectNameChars.ReplaceAllLiteralString(objName, "_")
+
+	return blobName
 }
