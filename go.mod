@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-module github.com/google/go-cloud
+module github.com/Lioric/go-cloud
 
 require (
 	cloud.google.com/go v0.0.0-20180816152847-43dc61c3e9d0
