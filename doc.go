@@ -27,13 +27,13 @@ the blob.Bucket can be used throughout your application without worrying
 about the underlying implementation.
 
 This project also provides a code generator called Wire
-(https://github.com/google/go-cloud/blob/master/wire/README.md). It creates
+(https://github.com/Lioric/go-cloud/blob/master/wire/README.md). It creates
 human-readable code that only imports the cloud SDKs for providers you use. This
 allows Go Cloud to grow to support any number of cloud providers, without
 increasing compile times or binary sizes, and avoiding any side effects from
 `init()` functions.
 
 For sample applications and a tutorial, see the samples directory
-(https://github.com/google/go-cloud/tree/master/samples).
+(https://github.com/Lioric/go-cloud/tree/master/samples).
 */
-package cloud // import "github.com/google/go-cloud"
+package cloud // import "github.com/Lioric/go-cloud"

@@ -17,7 +17,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 func main() {

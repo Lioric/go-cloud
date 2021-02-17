@@ -25,7 +25,7 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 type context struct{}

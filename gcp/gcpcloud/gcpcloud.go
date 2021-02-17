@@ -16,11 +16,11 @@
 package gcpcloud
 
 import (
-	"github.com/google/go-cloud/gcp"
-	"github.com/google/go-cloud/mysql/cloudmysql"
-	"github.com/google/go-cloud/runtimevar/runtimeconfigurator"
-	"github.com/google/go-cloud/server/sdserver"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/gcp"
+	"github.com/Lioric/go-cloud/mysql/cloudmysql"
+	"github.com/Lioric/go-cloud/runtimevar/runtimeconfigurator"
+	"github.com/Lioric/go-cloud/server/sdserver"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 // GCP is a Wire provider set that includes all Google Cloud Platform services

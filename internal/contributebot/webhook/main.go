@@ -42,7 +42,7 @@ func handleDefault(w http.ResponseWriter, r *http.Request) {
 	const responseData = `<!DOCTYPE html>
 <title>Go Cloud Contribute Bot</title>
 <h1>Go Cloud Contribute Bot</h1>
-<p>Hello, you've reached <a href="https://github.com/google/go-cloud">Go Cloud</a>'s contribute bot!</p>`
+<p>Hello, you've reached <a href="https://github.com/Lioric/go-cloud">Go Cloud</a>'s contribute bot!</p>`
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return

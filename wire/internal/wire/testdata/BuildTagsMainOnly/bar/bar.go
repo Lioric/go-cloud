@@ -17,7 +17,7 @@
 // Package bar includes both wireinject and non-wireinject variants.
 package bar
 
-import "github.com/google/go-cloud/wire"
+import "github.com/Lioric/go-cloud/wire"
 
 // Set provides a friendly user greeting.
 var Set = wire.NewSet(wire.Value("Hello, World!"))

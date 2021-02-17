@@ -19,10 +19,10 @@ package main
 import (
 	"context"
 
-	"github.com/google/go-cloud/gcp"
-	"github.com/google/go-cloud/gcp/gcpcloud"
-	"github.com/google/go-cloud/server"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/gcp"
+	"github.com/Lioric/go-cloud/gcp/gcpcloud"
+	"github.com/Lioric/go-cloud/server"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 func initialize(ctx context.Context) (*server.Server, error) {

@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cloud/internal/testing/setup"
-	"github.com/google/go-cloud/runtimevar"
-	"github.com/google/go-cloud/runtimevar/drivertest"
+	"github.com/Lioric/go-cloud/internal/testing/setup"
+	"github.com/Lioric/go-cloud/runtimevar"
+	"github.com/Lioric/go-cloud/runtimevar/drivertest"
 	pb "google.golang.org/genproto/googleapis/cloud/runtimeconfig/v1beta1"
 )
 

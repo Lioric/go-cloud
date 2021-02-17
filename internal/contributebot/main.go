@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-github/github"
 )
 
-const userAgent = "google/go-cloud Contribute Bot"
+const userAgent = "Lioric/go-cloud Contribute Bot"
 
 type flagConfig struct {
 	project      string

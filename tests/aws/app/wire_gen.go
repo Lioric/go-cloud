@@ -11,10 +11,10 @@ import (
 	client "github.com/aws/aws-sdk-go/aws/client"
 	credentials "github.com/aws/aws-sdk-go/aws/credentials"
 	session "github.com/aws/aws-sdk-go/aws/session"
-	health "github.com/google/go-cloud/health"
-	server "github.com/google/go-cloud/server"
-	xrayserver "github.com/google/go-cloud/server/xrayserver"
-	wire "github.com/google/go-cloud/wire"
+	health "github.com/Lioric/go-cloud/health"
+	server "github.com/Lioric/go-cloud/server"
+	xrayserver "github.com/Lioric/go-cloud/server/xrayserver"
+	wire "github.com/Lioric/go-cloud/wire"
 	trace "go.opencensus.io/trace"
 )
 

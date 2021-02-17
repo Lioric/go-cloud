@@ -37,9 +37,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/driver"
-	// "github.com/google/go-cloud/blob/fileblob"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/driver"
+	// "github.com/Lioric/go-cloud/blob/fileblob"
 )
 
 type sqlbucket struct {

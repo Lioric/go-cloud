@@ -17,8 +17,8 @@ package cloudmysql_test
 import (
 	"context"
 
-	"github.com/google/go-cloud/gcp"
-	"github.com/google/go-cloud/mysql/cloudmysql"
+	"github.com/Lioric/go-cloud/gcp"
+	"github.com/Lioric/go-cloud/mysql/cloudmysql"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )

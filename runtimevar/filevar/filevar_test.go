@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cloud/runtimevar"
-	"github.com/google/go-cloud/runtimevar/drivertest"
+	"github.com/Lioric/go-cloud/runtimevar"
+	"github.com/Lioric/go-cloud/runtimevar/drivertest"
 )
 
 type harness struct {

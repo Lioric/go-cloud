@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/google/go-cloud/runtimevar/driver"
+	"github.com/Lioric/go-cloud/runtimevar/driver"
 )
 
 // Snapshot contains a variable and metadata about it.

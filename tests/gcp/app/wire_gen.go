@@ -7,10 +7,10 @@ package main
 
 import (
 	context "context"
-	gcp "github.com/google/go-cloud/gcp"
-	health "github.com/google/go-cloud/health"
-	server "github.com/google/go-cloud/server"
-	sdserver "github.com/google/go-cloud/server/sdserver"
+	gcp "github.com/Lioric/go-cloud/gcp"
+	health "github.com/Lioric/go-cloud/health"
+	server "github.com/Lioric/go-cloud/server"
+	sdserver "github.com/Lioric/go-cloud/server/sdserver"
 	trace "go.opencensus.io/trace"
 )
 

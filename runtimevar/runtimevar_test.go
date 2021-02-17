@@ -24,7 +24,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cloud/runtimevar"
+	"github.com/Lioric/go-cloud/runtimevar"
 	"github.com/google/go-cmp/cmp"
 )
 

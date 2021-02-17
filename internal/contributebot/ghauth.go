@@ -27,7 +27,7 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/google/go-cloud/runtimevar"
+	"github.com/Lioric/go-cloud/runtimevar"
 	"github.com/google/go-github/github"
 )
 

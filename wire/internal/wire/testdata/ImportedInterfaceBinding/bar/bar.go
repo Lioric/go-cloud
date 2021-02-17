@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"example.com/foo"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 func main() {

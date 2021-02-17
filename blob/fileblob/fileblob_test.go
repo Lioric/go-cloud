@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/drivertest"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/drivertest"
 )
 
 type harness struct {

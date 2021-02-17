@@ -19,9 +19,9 @@ package main
 import (
 	"context"
 
-	"github.com/google/go-cloud/aws/awscloud"
-	"github.com/google/go-cloud/server"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/aws/awscloud"
+	"github.com/Lioric/go-cloud/server"
+	"github.com/Lioric/go-cloud/wire"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"

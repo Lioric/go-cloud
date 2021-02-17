@@ -17,7 +17,7 @@
 package main
 
 import (
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 func injectBar(foo Foo) Bar {

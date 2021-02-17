@@ -23,8 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/fileblob"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/fileblob"
 )
 
 func ExampleBucket_NewReader() {
@@ -106,7 +106,7 @@ func ExampleBucket_NewWriter() {
 	// Open a writer using the key "foo.txt" and the default options.
 	ctx := context.Background()
 	// fileblob doesn't support custom content-type yet, see
-	// https://github.com/google/go-cloud/issues/111.
+	// https://github.com/Lioric/go-cloud/issues/111.
 	w, err := bucket.NewWriter(ctx, "foo.txt", &blob.WriterOptions{
 		ContentType: "application/octet-stream",
 	})

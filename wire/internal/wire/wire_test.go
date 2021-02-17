@@ -32,7 +32,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/go-cloud/internal/testing/setup"
+	"github.com/Lioric/go-cloud/internal/testing/setup"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -73,7 +73,7 @@ func TestWire(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if test.name == "Vendor" && os.Getenv("GO111MODULE") != "off" {
 				// TODO: Remove the GO111MODULE check when it is not relevant (maybe after Go 1.12).
-				t.Skip("Skipped testing for vendored package for Go module turned on, see https://github.com/google/go-cloud/issues/326")
+				t.Skip("Skipped testing for vendored package for Go module turned on, see https://github.com/Lioric/go-cloud/issues/326")
 			}
 			t.Parallel()
 
@@ -359,7 +359,7 @@ func loadTestCase(root string, wireGoSrc []byte) (*testCase, error) {
 		}
 	}
 	goFiles := map[string][]byte{
-		"github.com/google/go-cloud/wire/wire.go": wireGoSrc,
+		"github.com/Lioric/go-cloud/wire/wire.go": wireGoSrc,
 	}
 	err = filepath.Walk(root, func(src string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -597,14 +597,14 @@ func (test *testCase) materialize(gopath string) error {
 //			... (Packages to be built and tested)
 //				any Go files copied recursively
 //
-//		github.com/google/go-cloud/
+//		github.com/Lioric/go-cloud/
 //
 //			go.mod
 //
 //			... (Dependency files copied)
 func writeGoMod(gopath string) error {
 	importPath := "example.com"
-	depPath := "github.com/google/go-cloud"
+	depPath := "github.com/Lioric/go-cloud"
 	depLoc := filepath.Join(gopath, "src", filepath.FromSlash(depPath))
 	example := fmt.Sprintf("module %s\n\nreplace %s => %s\n", importPath, depPath, depLoc)
 	gomod := filepath.Join(gopath, "src", importPath, "go.mod")

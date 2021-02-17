@@ -16,7 +16,7 @@
 
 package bar
 
-import "github.com/google/go-cloud/wire"
+import "github.com/Lioric/go-cloud/wire"
 
 // Set provides an unfriendly user greeting.
 var Set = wire.NewSet(wire.Value("Bah humbug! This is the wrong variant!"))

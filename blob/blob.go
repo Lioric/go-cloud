@@ -25,7 +25,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/google/go-cloud/blob/driver"
+	"github.com/Lioric/go-cloud/blob/driver"
 )
 
 // Reader implements io.ReadCloser to read a blob. It must be closed after

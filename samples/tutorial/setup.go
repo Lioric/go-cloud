@@ -21,10 +21,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/gcsblob"
-	"github.com/google/go-cloud/blob/s3blob"
-	"github.com/google/go-cloud/gcp"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/gcsblob"
+	"github.com/Lioric/go-cloud/blob/s3blob"
+	"github.com/Lioric/go-cloud/gcp"
 )
 
 // setupBucket creates a connection to a particular cloud provider's blob storage.

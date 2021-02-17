@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/drivertest"
-	"github.com/google/go-cloud/internal/testing/setup"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/drivertest"
+	"github.com/Lioric/go-cloud/internal/testing/setup"
 )
 
 // These constants record the region & bucket used for the last --record.

@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/go-cloud/requestlog"
-	"github.com/google/go-cloud/server"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/requestlog"
+	"github.com/Lioric/go-cloud/server"
+	"github.com/Lioric/go-cloud/wire"
 
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/service/xray"

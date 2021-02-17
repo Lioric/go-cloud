@@ -20,13 +20,13 @@ import (
 	"context"
 
 	awsclient "github.com/aws/aws-sdk-go/aws/client"
-	"github.com/google/go-cloud/aws/awscloud"
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/s3blob"
-	"github.com/google/go-cloud/mysql/rdsmysql"
-	"github.com/google/go-cloud/runtimevar"
-	"github.com/google/go-cloud/runtimevar/paramstore"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/aws/awscloud"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/s3blob"
+	"github.com/Lioric/go-cloud/mysql/rdsmysql"
+	"github.com/Lioric/go-cloud/runtimevar"
+	"github.com/Lioric/go-cloud/runtimevar/paramstore"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 // This file wires the generic interfaces up to Amazon Web Services (AWS). It

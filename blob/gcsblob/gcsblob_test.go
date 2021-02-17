@@ -18,10 +18,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/drivertest"
-	"github.com/google/go-cloud/gcp"
-	"github.com/google/go-cloud/internal/testing/setup"
+	"github.com/Lioric/go-cloud/blob"
+	"github.com/Lioric/go-cloud/blob/drivertest"
+	"github.com/Lioric/go-cloud/gcp"
+	"github.com/Lioric/go-cloud/internal/testing/setup"
 	"google.golang.org/api/googleapi"
 )
 

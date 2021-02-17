@@ -18,11 +18,11 @@ package awscloud
 import (
 	"net/http"
 
-	"github.com/google/go-cloud/aws"
-	"github.com/google/go-cloud/mysql/rdsmysql"
-	"github.com/google/go-cloud/runtimevar/paramstore"
-	"github.com/google/go-cloud/server/xrayserver"
-	"github.com/google/go-cloud/wire"
+	"github.com/Lioric/go-cloud/aws"
+	"github.com/Lioric/go-cloud/mysql/rdsmysql"
+	"github.com/Lioric/go-cloud/runtimevar/paramstore"
+	"github.com/Lioric/go-cloud/server/xrayserver"
+	"github.com/Lioric/go-cloud/wire"
 )
 
 // AWS is a Wire provider set that includes all Amazon Web Services interface

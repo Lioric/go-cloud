@@ -21,9 +21,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/google/go-cloud/internal/testing/setup"
-	"github.com/google/go-cloud/runtimevar"
-	"github.com/google/go-cloud/runtimevar/drivertest"
+	"github.com/Lioric/go-cloud/internal/testing/setup"
+	"github.com/Lioric/go-cloud/runtimevar"
+	"github.com/Lioric/go-cloud/runtimevar/drivertest"
 )
 
 // This constant records the region used for the last --record.
