@@ -42,17 +42,19 @@ import (
 	// "github.com/Lioric/go-cloud/blob/fileblob"
 )
 
+var DBName = ""
+var FTSExt = ""
+
 type sqlbucket struct {
 	dir        string
 	fileBucket *bucket
 }
 
-var DBName = ""
-var FTSExt = ""
-
 // var FTSExt = ".fts"
 
 var sPathSep = string(os.PathSeparator)
+
+const var SCHEMA_VERSION = "1"
 
 // var sBucketLocation string
 
@@ -77,29 +79,39 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 	defer sqlDB.Close()
 
-	query := `CREATE TABLE notes (
-		id INTEGER PRIMARY KEY,
-		title text NOT NULL,
-		tags TEXT,
-		creator TEXT,
-		created INTEGER,
-		modified INTEGER,
-		modifier TEXT,
-		revision INTEGER,
-		fields BLOB
-	);
+	query := `
+		CREATE TABLE info (
+			version INTEGER NOT NULL,
+			rev INTEGER NOT NULL
+		);
 
-	CREATE TABLE extrafields (
-		id INTEGER PRIMARY KEY,
-		noteId INTEGER,
-		name text NOT NULL,
-		value text,
-		FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
-	);
+		CREATE TABLE notes (
+			id INTEGER PRIMARY KEY,
+			title text NOT NULL,
+			tags TEXT DEFAULT "",
+			creator TEXT DEFAULT "",
+			created INTEGER DEFAULT 0,
+			modified INTEGER DEFAULT 0,
+			modifier TEXT DEFAULT "",
+			revision INTEGER DEFAULT 0,
+			fields BLOB DEFAULT ""
+		);
 
-	CREATE UNIQUE INDEX titleIndex ON notes(title);
-	CREATE INDEX noteIndex ON extrafields(noteId)
+		CREATE TABLE extrafields (
+			id INTEGER PRIMARY KEY,
+			noteId INTEGER,
+			name text NOT NULL,
+			value text,
+			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
+		);
+
+		CREATE UNIQUE INDEX titleIndex ON notes(title);
+		CREATE INDEX noteIndex ON extrafields(noteId);
+
+		INSERT INTO info VALUES (` + SCHEMA_VERSION + `, 0)
+		INSERT INTO notes (id, title, created, revision) VALUES (0, ____info, CURRENT_TIMESTAMP, 0)
 	`
+
 
 	// extraId INTEGER PRIMARY KEY,
 
