@@ -374,7 +374,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 
 		idStr := "null"
 
-		if id > 0 {
+		if id >= 0 {
 			idStr = strconv.FormatInt(int64(id), 10)
 		}
 
