@@ -305,7 +305,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		defer db.Close()
 
 		// Enable foreing keys constrains and attach FullTextSearch database
-		_, err = db.Exec("PRAGMA foreign_keys=ON; ATTACH DATABASE \"" + sql + FTSExt + "\" AS fts;")
+		_, err = db.Exec("PRAGMA foreign_keys=ON; ATTACH DATABASE \"" + sql + FTSExt + "\" AS FTS;")
 		if err != nil {
 			return fmt.Errorf("setup db connection [%s]: %v", name, err)
 		}
@@ -422,7 +422,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		if filter != nil {
 
 			// Insert Full text Search filter
-			query = `REPLACE into fts(noteId, filter) values(` + filterId + `, ?)`
+			query = `REPLACE into filters(noteId, filter) values(` + filterId + `, ?)`
 
 			_, err := tx.Exec(query, filter)
 			if err != nil {
