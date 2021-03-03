@@ -55,6 +55,7 @@ type sqlbucket struct {
 var sPathSep = string(os.PathSeparator)
 
 const SCHEMA_VERSION string = "1"
+const TITLE_INFO_ENTRY = "$:/____info"
 
 // var sBucketLocation string
 
@@ -110,7 +111,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX noteIndex ON extrafields(noteId);
 
 		INSERT INTO info(rowid, version, rev) VALUES (0,` + SCHEMA_VERSION + `, 0);
-		INSERT INTO notes (id, title, created, revision, modifier) VALUES (0, ____info, CURRENT_TIMESTAMP, 0, 0)
+		INSERT INTO notes (id, title, created, revision, modifier) VALUES (0,` + TITLE_INFO_ENTRY + `, CURRENT_TIMESTAMP, 0, 0)
 	`
 
 	// extraId INTEGER PRIMARY KEY,
