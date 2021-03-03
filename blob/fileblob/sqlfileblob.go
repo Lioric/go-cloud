@@ -82,7 +82,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 	query := `
 		CREATE TABLE info (
 			version INTEGER NOT NULL,
-			rev INTEGER NOT NULL
+			rev INTEGER NOT NULL,
+			extra BLOB
 		);
 
 		CREATE TABLE notes (
@@ -99,7 +100,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 		CREATE TABLE extrafields (
 			id INTEGER PRIMARY KEY,
-			noteId INTEGER,
+			noteId INTEGER NOT NULL,
 			name text NOT NULL,
 			value text,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
@@ -108,8 +109,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX noteIndex ON extrafields(noteId);
 
-		INSERT INTO info VALUES (` + SCHEMA_VERSION + `, 0)
-		INSERT INTO notes (id, title, created, revision) VALUES (0, ____info, CURRENT_TIMESTAMP, 0)
+		INSERT INTO info(rowid, version, rev) VALUES (0,` + SCHEMA_VERSION + `, 0);
+		INSERT INTO notes (id, title, created, revision, modifier) VALUES (0, ____info, CURRENT_TIMESTAMP, 0, 0)
 	`
 
 	// extraId INTEGER PRIMARY KEY,
@@ -737,57 +738,39 @@ func (b *sqlbucket) Delete(ctx context.Context, key string) error {
 	if db != nil {
 		defer db.Close()
 
-		rows, _ := db.Query("select rowid, fields from notes where title = ?", objName)
-
-		if rows.Next() {
-			var id int
-			var fields string
-
-			err := rows.Scan(&id, &fields)
-			rows.Close()
-			if err == nil {
-				if len(fields) > 0 {
-					// Delete previous extra fields
-					db.Exec("delete from extrafields where rowid in (" + fields + ")")
-					// _, err := db.Exec("delete from extrafields where rowid in (" + fields + ")")
-					// if err != nil {
-					// 	return fmt.Errorf("delete extra data rows: %v", err)
-					// }
-				}
-
-				_, err = db.Exec("delete from notes where rowid = ?", id)
-				if err != nil {
-					return fmt.Errorf("delete sql entry %s: %v", objName, err)
-				}
-				// return fmt.Errorf("get row data: %v", err)
-			}
+		_, err = db.Exec("PRAGMA foreign_keys=ON;DELETE FROM notes WHERE title = ?", objName)
+		if err != nil {
+			return fmt.Errorf("delete sql entry %s: %v", objName, err)
 		}
 
+		/*
+			rows, _ := db.Query("SELECT rowid, fields FROM notes where title = ?", objName)
+
+			if rows.Next() {
+				var id int
+				var fields string
+
+				err := rows.Scan(&id, &fields)
+				rows.Close()
+				if err == nil {
+					if len(fields) > 0 {
+						// Delete previous extra fields
+						db.Exec("delete from extrafields where rowid in (" + fields + ")")
+						// _, err := db.Exec("delete from extrafields where rowid in (" + fields + ")")
+						// if err != nil {
+						// 	return fmt.Errorf("delete extra data rows: %v", err)
+						// }
+					}
+
+					_, err = db.Exec("delete from notes where rowid = ?", id)
+					if err != nil {
+						return fmt.Errorf("delete sql entry %s: %v", objName, err)
+					}
+				}
+			}
+		*/
+
 	}
-	// if strings.HasPrefix(key, "sql://") {
-	// 	keyName := strings.TrimPrefix(key, "sql://")
-	// 	sql, objName, _ := b.getMetadataElements(keyName)
-
-	// 	db, err := openDB(ctx, sql)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if db != nil {
-	// 		defer db.Close()
-
-	// 		_, err := db.Exec("delete from notes where title = ?", objName)
-	// 		if err != nil {
-	// 			return fmt.Errorf("delete sql entry %s: %v", objName, err)
-	// 		}
-
-	// 	}
-
-	// 	return nil
-
-	// } else {
-	// 	return b.fileBucket.Delete(ctx, key)
-	// }
 
 	return b.fileBucket.Delete(ctx, key)
 	// relpath, err := resolvePath(key)
