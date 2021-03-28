@@ -642,7 +642,7 @@ func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string
 	sql, _, _ := b.getMetadataElements(area)
 
 	// 	Create metadata database
-	_, err := createDB(ctx, name)
+	_, err = createDB(ctx, sql)
 
 	if err != nil {
 		return err
