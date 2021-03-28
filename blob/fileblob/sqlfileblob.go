@@ -639,7 +639,7 @@ func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string
 		return err
 	}
 
-	sql, _, _ := b.getMetadataElements(area)
+	sql, _, _ := b.getMetadataElements(area + sPathSep + "__placeholder__")
 
 	// 	Create metadata database
 	_, err = createDB(ctx, sql)
