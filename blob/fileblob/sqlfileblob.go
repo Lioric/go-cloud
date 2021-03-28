@@ -647,8 +647,7 @@ func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string
 	if err != nil {
 		if os.IsNotExist(err) {
 			return sqlFileError{key: area, msg: "area don't exists", kind: driver.NotFound}
-		}
-		else {
+		} else {
 			return err
 		}
 	}
