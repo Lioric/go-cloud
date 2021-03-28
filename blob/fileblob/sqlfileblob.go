@@ -148,7 +148,7 @@ func openDB(ctx context.Context, name string) (*sql.DB, error) {
 	_, err := os.Stat(name)
 
 	if os.IsNotExist(err) {
-		return nil, err
+		return nil, sqlFileError{key: name, msg: "no metadata in area", kind: driver.NotFound}
 		// // 	Create metadata database
 		// _, err := createDB(ctx, name)
 
