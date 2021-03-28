@@ -1,0 +1,1 @@
+GOPRIVATE=github.com/Lioric GOPATH=/media/mugen/KnowledgeDog/go go get "github.com/Lioric/go-cloud"
