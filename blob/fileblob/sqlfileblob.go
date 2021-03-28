@@ -148,12 +148,13 @@ func openDB(ctx context.Context, name string) (*sql.DB, error) {
 	_, err := os.Stat(name)
 
 	if os.IsNotExist(err) {
-		// 	Create metadata database
-		_, err := createDB(ctx, name)
+		return nil, err
+		// // 	Create metadata database
+		// _, err := createDB(ctx, name)
 
-		if err != nil {
-			return nil, err
-		}
+		// if err != nil {
+		// 	return nil, err
+		// }
 	}
 
 	sqlDB, err := sql.Open("sqlite3", name)
@@ -637,6 +638,16 @@ func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string
 	if err != nil && os.IsExist(err) == false {
 		return err
 	}
+
+	sql, _, _ := b.getMetadataElements(area)
+
+	// 	Create metadata database
+	_, err := createDB(ctx, name)
+
+	if err != nil {
+		return err
+	}
+
 	// if area == "." {
 	// 	return fmt.Errorf("area invalid path \".\"")
 	// }
