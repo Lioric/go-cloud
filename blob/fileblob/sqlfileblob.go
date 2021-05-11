@@ -687,6 +687,9 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 	// Commets, revisions, attachment files or objects moved to the recycle bin don't need to store meta in the database
 	addMeta := opt.Extra["AddMeta"]
 
+	// Object list info store just metadata, don't create an external file
+	addData := opt.Extra["AddData"]
+
 	// Metadata is stored in sql database
 	// don't create .meta file in the fileblob writer
 	if addMeta != "false" {
@@ -705,6 +708,7 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 		id:       opt.Id,
 		// extra:    opt.Extra["extraFields"],
 		addMeta: addMeta != "false",
+		addData: addData != "false",
 	}, err
 }
 
@@ -718,10 +722,15 @@ type sqlWriter struct {
 	// extra    string
 	ctx     context.Context
 	addMeta bool
+	addData bool
 }
 
 func (w sqlWriter) Write(p []byte) (n int, err error) {
-	return w.w.Write(p)
+	if w.addData {
+		return w.w.Write(p)
+	}
+
+	return 0, nil
 }
 
 func (w sqlWriter) Close() error {
