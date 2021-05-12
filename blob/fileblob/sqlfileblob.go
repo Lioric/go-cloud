@@ -200,10 +200,7 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 
 	defer db.Close()
 
-	row, err := db.QueryRow("select version,rev,extra from info where rowid = ?", list[1])
-	if err != nil {
-		return nil, fmt.Errorf("Error getting info metadata: %v", err)
-	}
+	row := db.QueryRow("select version,rev,extra from info where rowid = ?", list[1])
 
 	var version string
 	var rev string
@@ -211,7 +208,7 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 
 	err = row.Scan(&version, &rev, &extra)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting info row data: %v", err)
+		return nil, fmt.Errorf("Error getting info metadata: %v", err)
 	}
 
 	xa := new(xattrs)
