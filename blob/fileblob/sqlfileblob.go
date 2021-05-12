@@ -183,51 +183,51 @@ func (b *sqlbucket) getMetadataElements(key string) (string, string, string) {
 	return sql, objName, area
 }
 
-func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string) (*xattrs, error) {
-	list := strings.SplitN(key, "/", 2)
-	if len(list) < 2 {
-		return nil, fmt.Errorf("Incorrect key id: %s", key)
-	}
+// func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string) (*xattrs, error) {
+// 	list := strings.SplitN(key, "/", 2)
+// 	if len(list) < 2 {
+// 		return nil, fmt.Errorf("Incorrect key id: %s", key)
+// 	}
 
-	db, err := openDB(ctx, sql)
-	if err != nil {
-		return nil, err
-	}
+// 	db, err := openDB(ctx, sql)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if db == nil {
-		return nil, fmt.Errorf("Unable to open: %s", sql)
-	}
+// 	if db == nil {
+// 		return nil, fmt.Errorf("Unable to open: %s", sql)
+// 	}
 
-	defer db.Close()
+// 	defer db.Close()
 
-	row := db.QueryRow("select version,rev,extra from info where rowid = ?", list[1])
+// 	row := db.QueryRow("select version,rev,extra from info where rowid = ?", list[1])
 
-	var version string
-	var rev string
-	var extra string
+// 	var version string
+// 	var rev string
+// 	var extra string
 
-	err = row.Scan(&version, &rev, &extra)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting info metadata: %v", err)
-	}
+// 	err = row.Scan(&version, &rev, &extra)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("Error getting info metadata: %v", err)
+// 	}
 
-	xa := new(xattrs)
-	xa.Meta = make(map[string]string)
+// 	xa := new(xattrs)
+// 	xa.Meta = make(map[string]string)
 
-	xa.Meta["version"] = version
-	xa.Meta["revision"] = rev
-	xa.Meta["extra"] = extra
+// 	xa.Meta["version"] = version
+// 	xa.Meta["revision"] = rev
+// 	xa.Meta["extra"] = extra
 
-	return xa, nil
-}
+// 	return xa, nil
+// }
 
 func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error) {
 	sql, objName, _ := b.getMetadataElements(key)
 
-	if strings.HasPrefix(objName, "$:/") {
-		// Key is from INFO table
-		return b.getInfoMetadata(ctx, sql, objName)
-	}
+	// if strings.HasPrefix(objName, "$:/") {
+	// 	// Key is from INFO table
+	// 	return b.getInfoMetadata(ctx, sql, objName)
+	// }
 
 	db, err := openDB(ctx, sql)
 	if err != nil {
@@ -336,40 +336,32 @@ type extraField struct {
 }
 
 // Put info metadata
-func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
-	sql, _, _ := b.getMetadataElements(name)
+// func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
+// 	sql, _, _ := b.getMetadataElements(name)
 
-	db, err := openDB(ctx, sql)
-	if err != nil {
-		return err
-	}
+// 	db, err := openDB(ctx, sql)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if db != nil {
-		defer db.Close()
+// 	if db != nil {
+// 		defer db.Close()
 
-		idStr := strconv.FormatInt(int64(id), 10)
-		query := `REPLACE INTO info(rowid, version, rev, extra) values(` + idStr + `, ?, ?, ?)`
+// 		idStr := strconv.FormatInt(int64(id), 10)
+// 		query := `REPLACE INTO info(rowid, version, rev, extra) values(` + idStr + `, ?, ?, ?)`
 
-		// rev, ok := meta["revision"]
-		// if ok == false {
-		// 	return fmt.Errorf("No revision provided[%s]", name)
-		// }
+// 		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
+// 		if err != nil {
+// 			return fmt.Errorf("Error updating info metadata[%s]: %v", name, err)
+// 		}
 
-		// extra, ok := meta["extra"]
+// 	}
 
-		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
-		if err != nil {
-			return fmt.Errorf("Error updating info metadata[%s]: %v", name, err)
-		}
-
-	}
-
-	return nil
-}
+// 	return nil
+// }
 
 // Put metadata
 func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int) error {
-	// func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int, extraFieldIds string) error {
 	sql, objName, _ := b.getMetadataElements(name)
 	// sql, _, _ := b.getMetadataElements(name)
 
@@ -815,14 +807,16 @@ func (w noDataWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w noDataWriter) Close() error {
-	rev, ok := w.meta["revision"]
-	if ok == false {
-		return fmt.Errorf("No revision provided[%s]", w.key)
-	}
+	err := w.b.putMetadata(w.ctx, w.key, w.id, w.meta, w.revision)
 
-	extra, ok := w.meta["extra"]
+	// rev, ok := w.meta["revision"]
+	// if ok == false {
+	// 	return fmt.Errorf("No revision provided[%s]", w.key)
+	// }
 
-	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
+	// extra, ok := w.meta["extra"]
+
+	// err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
 	if err != nil {
 		return fmt.Errorf("write blob attributes: %v", err)
 	}
