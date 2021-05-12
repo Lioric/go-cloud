@@ -183,8 +183,54 @@ func (b *sqlbucket) getMetadataElements(key string) (string, string, string) {
 	return sql, objName, area
 }
 
+func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string) (*xattrs, error) {
+	list := strings.SplitN(key, "/", 2)
+	if len(list) < 2 {
+		return nil, fmt.Errorf("Incorrect key id: %s", key)
+	}
+
+	db, err := openDB(ctx, sql)
+	if err != nil {
+		return nil, err
+	}
+
+	if db == nil {
+		return nil, fmt.Errorf("Unable to open: %s", sql)
+	}
+
+	defer db.Close()
+
+	row, err := db.QueryRow("select version,rev,extra from info where rowid = ?", list[1])
+	if err != nil {
+		return nil, fmt.Errorf("Error getting info metadata: %v", err)
+	}
+
+	var version string
+	var rev string
+	var extra string
+
+	err = row.Scan(&version, &rev, &extra)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting info row data: %v", err)
+	}
+
+	xa := new(xattrs)
+	xa.Meta = make(map[string]string)
+
+	xa.Meta["version"] = version
+	xa.Meta["revision"] = rev
+	xa.Meta["extra"] = extra
+
+	return xa, nil
+}
+
 func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error) {
 	sql, objName, _ := b.getMetadataElements(key)
+
+	if strings.HasPrefix(objName, "$:/") {
+		// Key is from INFO table
+		return b.getInfoMetadata(ctx, sql, objName)
+	}
 
 	db, err := openDB(ctx, sql)
 	if err != nil {
@@ -290,6 +336,38 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 type extraField struct {
 	name  string
 	value string
+}
+
+// Put info metadata
+func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
+	sql, _, _ := b.getMetadataElements(name)
+
+	db, err := openDB(ctx, sql)
+	if err != nil {
+		return err
+	}
+
+	if db != nil {
+		defer db.Close()
+
+		idStr := strconv.FormatInt(int64(id), 10)
+		query := `REPLACE INTO info(rowid, version, rev, extra) values(` + idStr + `, ?, ?, ?)`
+
+		// rev, ok := meta["revision"]
+		// if ok == false {
+		// 	return fmt.Errorf("No revision provided[%s]", name)
+		// }
+
+		// extra, ok := meta["extra"]
+
+		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
+		if err != nil {
+			return fmt.Errorf("Error updating info metadata[%s]: %v", name, err)
+		}
+
+	}
+
+	return nil
 }
 
 // Put metadata
@@ -687,29 +765,72 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 	// Commets, revisions, attachment files or objects moved to the recycle bin don't need to store meta in the database
 	addMeta := opt.Extra["AddMeta"]
 
-	// Object list info store just metadata, don't create an external file
-	addData := opt.Extra["AddData"]
-
 	// Metadata is stored in sql database
 	// don't create .meta file in the fileblob writer
 	if addMeta != "false" {
 		opt.Extra["AddMeta"] = "false"
 	}
 
-	w, err := b.fileBucket.NewTypedWriter(ctx, key, contentType, opt)
+	// Object list info store just metadata, don't create an external file
+	addData := opt.Extra["AddData"] != "false"
 
-	return sqlWriter{
-		w:        w,
-		key:      key,
-		meta:     opt.Metadata,
-		revision: opt.Revision,
-		b:        b,
-		ctx:      ctx,
-		id:       opt.Id,
-		// extra:    opt.Extra["extraFields"],
-		addMeta: addMeta != "false",
-		addData: addData != "false",
-	}, err
+	if addData {
+		w, err := b.fileBucket.NewTypedWriter(ctx, key, contentType, opt)
+
+		return sqlWriter{
+			w:        w,
+			key:      key,
+			meta:     opt.Metadata,
+			revision: opt.Revision,
+			b:        b,
+			ctx:      ctx,
+			id:       opt.Id,
+			// extra:    opt.Extra["extraFields"],
+			addMeta: addMeta != "false",
+			// addData: addData,
+		}, err
+
+	} else {
+
+		return noDataWriter{
+			key:      key,
+			meta:     opt.Metadata,
+			revision: opt.Revision,
+			b:        b,
+			ctx:      ctx,
+			id:       opt.Id,
+		}, nil
+	}
+}
+
+type noDataWriter struct {
+	ctx      context.Context
+	w        io.WriteCloser
+	b        *sqlbucket
+	id       int
+	key      string
+	meta     map[string]string
+	revision int
+}
+
+func (w noDataWriter) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (w noDataWriter) Close() error {
+	rev, ok := w.meta["revision"]
+	if ok == false {
+		return fmt.Errorf("No revision provided[%s]", w.key)
+	}
+
+	extra, ok := w.meta["extra"]
+
+	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
+	if err != nil {
+		return fmt.Errorf("write blob attributes: %v", err)
+	}
+
+	return nil
 }
 
 type sqlWriter struct {
@@ -726,11 +847,12 @@ type sqlWriter struct {
 }
 
 func (w sqlWriter) Write(p []byte) (n int, err error) {
-	if w.addData {
-		return w.w.Write(p)
-	}
+	return w.w.Write(p)
+	// if w.addData {
+	// 	return w.w.Write(p)
+	// }
 
-	return 0, nil
+	// return 0, nil
 }
 
 func (w sqlWriter) Close() error {
