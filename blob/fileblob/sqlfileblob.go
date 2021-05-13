@@ -218,7 +218,7 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 	xa.Meta = make(map[string]string)
 
 	xa.Meta["version"] = version
-	xa.Meta["revision"] = rev
+	xa.Meta["rev"] = rev
 	xa.Meta["extra"] = extra
 
 	return xa, nil
@@ -836,7 +836,7 @@ func (w InfoDataWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w InfoDataWriter) Close() error {
-	rev, ok := w.meta["revision"]
+	rev, ok := w.meta["rev"]
 	if ok == false {
 		return fmt.Errorf("No revision provided[%s]", w.key)
 	}
