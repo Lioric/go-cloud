@@ -640,7 +640,7 @@ func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, leng
 			return nil, err
 		}
 
-		size := 0
+		var size int64
 		var modTime time.Time
 
 		relpath, err := resolvePath(key, exactKeyName)
