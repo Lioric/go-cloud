@@ -342,6 +342,13 @@ type extraField struct {
 func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
 	sql, key, _ := b.getMetadataElements(name)
 
+	list := strings.SplitN(key, "/", 2)
+	if len(list) < 2 {
+		return fmt.Errorf("Incorrect key name: %s", key)
+	}
+
+	keyName := list[1]
+
 	db, err := openDB(ctx, sql)
 	if err != nil {
 		return err
@@ -351,7 +358,7 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, re
 		defer db.Close()
 
 		// idStr := strconv.FormatInt(int64(id), 10)
-		query := `REPLACE INTO info(name, version, rev, extra) values("` + name + `", ?, ?, ?)`
+		query := `REPLACE INTO info(name, version, rev, extra) values("` + keyName + `", ?, ?, ?)`
 
 		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
 		if err != nil {
@@ -803,13 +810,8 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 
 	} else {
 
-		list := strings.SplitN(key, "/", 2)
-		if len(list) < 2 {
-			return nil, fmt.Errorf("Incorrect key name: %s", key)
-		}
-
 		return InfoDataWriter{
-			key:      list[1],
+			key:      key,
 			meta:     opt.Metadata,
 			revision: opt.Revision,
 			b:        b,
