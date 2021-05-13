@@ -82,7 +82,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 	query := `
 		CREATE TABLE info (
-			name text NOT NULL,
+			name text NOT NULL UNIQUE,
 			version INTEGER NOT NULL,
 			rev INTEGER NOT NULL,
 			extra BLOB
@@ -339,7 +339,7 @@ type extraField struct {
 
 // Put info metadata
 func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
-	sql, _, _ := b.getMetadataElements(name)
+	sql, key, _ := b.getMetadataElements(name)
 
 	db, err := openDB(ctx, sql)
 	if err != nil {
@@ -349,15 +349,12 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, re
 	if db != nil {
 		defer db.Close()
 
-		idStr := strconv.FormatInt(int64(id), 10)
-		query := `REPLACE INTO info(rowid, version, rev, extra) values(` + idStr + `, ?, ?, ?)`
-
-		// rev, ok := meta["revision"]
-		// if ok == false {
-		// 	return fmt.Errorf("No revision provided[%s]", name)
-		// }
-
-		// extra, ok := meta["extra"]
+		list := strings.SplitN(key, "/", 2)
+		if len(list) < 2 {
+			return fmt.Errorf("Incorrect key name: %s", key)
+		}
+		// idStr := strconv.FormatInt(int64(id), 10)
+		query := `REPLACE INTO info(name, version, rev, extra) values("` + NAME_INFO_ENTRY + `", ?, ?, ?)`
 
 		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
 		if err != nil {
