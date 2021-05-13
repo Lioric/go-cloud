@@ -768,7 +768,8 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 	}
 
 	// Object list info store just metadata, don't create an external file
-	addData := opt.Extra["AddData"] != "false"
+	addData := strings.HasPrefix(opt.Name, "$:/")
+	// addData := opt.Extra["AddData"] != "false"
 
 	if addData {
 		w, err := b.fileBucket.NewTypedWriter(ctx, key, contentType, opt)

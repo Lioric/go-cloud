@@ -65,6 +65,7 @@ type WriterOptions struct {
 	Revision int
 	// Extra options for platform specific implementations
 	Id    int
+	Name  string
 	Extra map[string]string
 }
 

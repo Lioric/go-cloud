@@ -201,6 +201,7 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opt *WriterOptions) 
 			BufferSize: opt.BufferSize,
 			// Tiddler metadata
 			Id:       opt.Id,
+			Name:     opt.Name,
 			Revision: opt.Revision,
 			Metadata: opt.Meta,
 			Extra:    opt.Extra,
@@ -262,6 +263,7 @@ type WriterOptions struct {
 	Revision int
 	// Extra options for platform specific implementations
 	Id    int
+	Name  string
 	Extra map[string]string
 }
 
