@@ -86,23 +86,21 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			name text NOT NULL UNIQUE,
 			version INTEGER NOT NULL,
 			rev INTEGER NOT NULL,
+			mod INTEGER,
 			extra BLOB
 		);
 
 		CREATE TABLE notes (
 			id INTEGER PRIMARY KEY,
 			title text NOT NULL,
-			tags TEXT DEFAULT "",
 			creator TEXT DEFAULT "",
 			created INTEGER DEFAULT 0,
 			modified INTEGER DEFAULT 0,
 			modifier TEXT DEFAULT "",
-			revision INTEGER DEFAULT 0,
-			fields BLOB DEFAULT ""
+			revision INTEGER DEFAULT 0
 		);
 
 		CREATE TABLE extrafields (
-			id INTEGER PRIMARY KEY,
 			noteId INTEGER NOT NULL,
 			name text NOT NULL,
 			value text,
@@ -110,9 +108,11 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		);
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
+		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX noteIndex ON extrafields(noteId);
 
 		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
+		PARGMA user_version=3;
 	`
 
 	// INSERT INTO notes (id, title, created, revision, modifier) VALUES (0,` + TITLE_INFO_ENTRY + `, CURRENT_TIMESTAMP, 0, 0)
@@ -339,7 +339,7 @@ type extraField struct {
 }
 
 // Put info metadata
-func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
+func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, mod int, extra string) error {
 	sql, key, _ := b.getMetadataElements(name)
 
 	list := strings.SplitN(key, "/", 2)
@@ -358,9 +358,9 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, re
 		defer db.Close()
 
 		// idStr := strconv.FormatInt(int64(id), 10)
-		query := `REPLACE INTO info(name, version, rev, extra) values("` + keyName + `", ?, ?, ?)`
+		query := `REPLACE INTO info(name, version, rev, mod, extra) values("` + keyName + `", ?, ?, ?, ?)`
 
-		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
+		_, err := db.Exec(query, SCHEMA_VERSION, revision, mod, extra)
 		if err != nil {
 			return fmt.Errorf("Error updating info metadata[%s]: %v", name, err)
 		}
@@ -841,9 +841,11 @@ func (w InfoDataWriter) Close() error {
 		return fmt.Errorf("No revision provided[%s]", w.key)
 	}
 
-	extra, ok := w.meta["extra"]
+	extra, _ := w.meta["extra"]
+	mod, _ := w.meta["mod"]
+	modTime, _ := strconv.ParseInt(mod, 10, 0)
 
-	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
+	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, int(modTime), extra)
 	if err != nil {
 		return fmt.Errorf("write blob attributes: %v", err)
 	}
