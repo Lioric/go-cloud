@@ -203,13 +203,14 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 
 	defer db.Close()
 
-	row := db.QueryRow("select version,rev,extra from info where name = ?", list[1])
+	row := db.QueryRow("SELECT version,rev,extra,mod from info where name = ?", list[1])
 
 	var version string
 	var rev string
 	var extra string
+	var mod string
 
-	err = row.Scan(&version, &rev, &extra)
+	err = row.Scan(&version, &rev, &extra, &mod)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting info metadata: %v", err)
 	}
@@ -220,6 +221,7 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 	xa.Meta["version"] = version
 	xa.Meta["rev"] = rev
 	xa.Meta["extra"] = extra
+	xa.Meta["mod"] = mod
 
 	return xa, nil
 }
