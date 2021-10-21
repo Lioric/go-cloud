@@ -476,7 +476,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 
 		query = `REPLACE INTO notes(id, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?)`
 
-		rowRes, err := tx.Exec(query, title, tags, creator, created, modified, modifier, revision)
+		rowRes, err := tx.Exec(query, title, creator, created, modified, modifier, revision)
 		// rowRes, err := db.Exec(query, title, tags, creator, created, modified, modifier, revision, filterId, filter)
 		// rowRes, err := db.Exec(query, title, tags, creator, created, modified, modifier, revision, id)
 		if err != nil {
