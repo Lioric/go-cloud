@@ -477,8 +477,6 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		query = `REPLACE INTO notes(id, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?)`
 
 		rowRes, err := tx.Exec(query, title, creator, created, modified, modifier, revision)
-		// rowRes, err := db.Exec(query, title, tags, creator, created, modified, modifier, revision, filterId, filter)
-		// rowRes, err := db.Exec(query, title, tags, creator, created, modified, modifier, revision, id)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("put metadata [%s]: %v", name, err)
@@ -490,8 +488,14 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		if len(tags) > 0 {
 			tagList := strings.Split(tags, ",")
 			tagStr := "'" + strings.Join(tagList, "','") + "'"
-			query += (`INSERT OR IGNORE INTO taglist(tags) VALUES(` + tagStr + `);
+			query = (`INSERT OR IGNORE INTO taglist(tags) VALUES(` + tagStr + `);
 						INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN (` + tagStr + `);`)
+		}
+
+		_, err = tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("put tags [%s]: %v", name, err)
 		}
 
 		var filterId string
