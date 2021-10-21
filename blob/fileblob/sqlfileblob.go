@@ -264,7 +264,6 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 
 		var id int
 		var title string
-		var tags string
 		var creator string
 		var created string
 		var modifier string
@@ -290,7 +289,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 		xa := new(xattrs)
 		xa.Meta = make(map[string]string)
 
-		err = rows.Scan(&id, &title, &tags, &creator, &created, &modified, &modifier, &revision)
+		err = rows.Scan(&id, &title, &creator, &created, &modified, &modifier, &revision)
 		// err = rows.Scan(&id, &title, &tags, &creator, &created, &modified, &modifier, &revision, &extraFields)
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
@@ -299,15 +298,40 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 		xa.Id = id
 		xa.Name = title
 		xa.Revision = revision
-		// xa.Meta["title"] = title
-		xa.Meta["tags"] = tags
 		xa.Meta["creator"] = creator
 		xa.Meta["created"] = created
 		xa.Meta["modified"] = modified
 		xa.Meta["modifier"] = modifier
-		// xa.Meta["previous"] = previous
+		// xa.Meta["title"] = title
 
-		// if len(extraFields) > 0 {
+		// Tags
+		tagRows, err := db.Query("select id,title,creator,created,modified,modifier,revision from notes where title = ?", objName)
+		// rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision,extraFields from notes where title = ?", objName)
+		if err != nil {
+			return nil, fmt.Errorf("get metadata: %v", err)
+		}
+		defer tagRows.Close()
+
+		var tags string
+
+		for tagRows.Next() {
+			var tag string
+
+			err = tagRows.Scan(&tag)
+			if err != nil {
+				return nil, fmt.Errorf("get metadata tags: %v", err)
+			}
+
+			if len(tags) > 0 {
+				tags += ","
+			}
+
+			tags += tag
+		}
+
+		xa.Meta["tags"] = tags
+
+		// Extra fields
 		extraRows, err := db.Query("SELECT name, value from extrafields WHERE noteId=" + strconv.FormatInt(int64(id), 10))
 		// extraRows, err := db.Query("SELECT * from extrafields WHERE rowid IN (" + extraFields + ")")
 		if err != nil {
@@ -331,9 +355,6 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 
 			xa.Meta[name] = value
 		}
-
-		// xa.Extra = map[string]string{"extraFields": extraFields}
-		// }
 
 		contentType, ok := xa.Meta["type"]
 		if ok == false {
