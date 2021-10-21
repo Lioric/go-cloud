@@ -489,7 +489,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			tagList := strings.Split(tags, ",")
 			tagValues := "('" + strings.Join(tagList, "'),('") + "')"
 			tagStr := "'" + strings.Join(tagList, "','") + "'"
-			query = (`INSERT OR IGNORE INTO taglist(tags) VALUES(` + tagValues + `);
+			query = (`INSERT OR IGNORE INTO taglist(tags) VALUES` + tagValues + `;
 						INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN (` + tagStr + `);`)
 		}
 
