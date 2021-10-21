@@ -255,7 +255,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 	if db != nil {
 		defer db.Close()
 
-		rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision from notes where title = ?", objName)
+		rows, err := db.Query("select id,title,creator,created,modified,modifier,revision from notes where title = ?", objName)
 		// rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision,extraFields from notes where title = ?", objName)
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
