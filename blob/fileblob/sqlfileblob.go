@@ -94,8 +94,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			id INTEGER PRIMARY KEY,
 			title text NOT NULL,
 			creator TEXT DEFAULT "",
-			created INTEGER DEFAULT 0,
-			modified INTEGER DEFAULT 0,
+			created INTEGER NOT NULL,
+			modified INTEGER NOT NULL,
 			modifier TEXT DEFAULT "",
 			revision INTEGER DEFAULT 0
 		);
@@ -106,6 +106,19 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			value text,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
 		);
+
+		CREATE TABLE IF NOT EXISTS taglist (
+			id INTEGER UNIQUE PRIMARY KEY,
+			tags text UNIQUE NOT NULL
+		 );
+
+		 CREATE TABLE IF NOT EXISTS tagmap (
+			noteId INTEGER NOT NULL,
+			tagId INTEGER NOT NULL,
+			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY(tagId) REFERENCES tags(id) ON UPDATE CASCADE ON DELETE CASCADE
+			PRIMARY KEY (noteId,tagId)
+		 );
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
@@ -461,28 +474,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			idStr = strconv.FormatInt(int64(id), 10)
 		}
 
-		query = `REPLACE INTO notes(id, title, tags, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?)`
-
-		/*
-			if id > 0 {
-				// Update Main metadata
-				query = `update notes SET
-							title = ?,
-							tags = ?,
-							creator = ?,
-							created = ?,
-							modified = ?,
-							modifier = ?,
-							revision = ?,
-							fields = ""
-							WHERE rowid = ` + rowIdStr
-
-			} else {
-				// Insert Main metadata
-				query = `insert into notes(title, tags, creator, created, modified, modifier, revision, fields)
-						values(?, ?, ?, ?, ?, ?, ?, "")`
-			}
-		*/
+		query = `REPLACE INTO notes(id, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?)`
 
 		rowRes, err := tx.Exec(query, title, tags, creator, created, modified, modifier, revision)
 		// rowRes, err := db.Exec(query, title, tags, creator, created, modified, modifier, revision, filterId, filter)
@@ -493,6 +485,13 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		}
 
 		noteId, _ := rowRes.LastInsertId()
+
+		// Tags
+		if len(tags) > 0 {
+			tagList := strings.Split(tags, ",")
+			query += (`INSERT OR IGNORE INTO taglist(tags) VALUES('` + strings.Join(tagList, "','") + `');
+						INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN ('` + tagList + `');`)
+		}
 
 		var filterId string
 		if id > 0 {
