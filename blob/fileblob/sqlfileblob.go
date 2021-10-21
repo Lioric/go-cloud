@@ -255,7 +255,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 	if db != nil {
 		defer db.Close()
 
-		rows, err := db.Query("select id,title,creator,created,modified,modifier,revision from notes where title = ?", objName)
+		rows, err := db.Query("SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?", objName)
 		// rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision,extraFields from notes where title = ?", objName)
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
@@ -305,7 +305,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 		// xa.Meta["title"] = title
 
 		// Tags
-		tagRows, err := db.Query("select id,title,creator,created,modified,modifier,revision from notes where title = ?", objName)
+		tagRows, err := db.Query("SELECT tags FROM taglist WHERE id IN (SELECT tagId FROM tagmap WHERE noteId=(SELECT id FROM notes WHERE title='" + objName + "'))")
 		// rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision,extraFields from notes where title = ?", objName)
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
