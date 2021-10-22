@@ -329,7 +329,11 @@ func (w writer) Close() error {
 	if err := setAttrs(w.path, w.attrs); err != nil {
 		return fmt.Errorf("write blob attributes: %v", err)
 	}
-	return w.w.Close()
+	if w.w != nil {
+		return w.w.Close()
+	}
+
+	return nil
 }
 
 func (b *bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
