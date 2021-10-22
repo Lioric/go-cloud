@@ -512,14 +512,15 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			tagStr := "'" + strings.Join(tagList, "','") + "'"
 			query = (`INSERT OR IGNORE INTO taglist(tags) VALUES` + tagValues + `;
 						INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN (` + tagStr + `);`)
+
+			_, err = tx.Exec(query)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("put tags [%s]: %v", name, err)
+			}
 		}
 
-		_, err = tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return fmt.Errorf("put tags [%s]: %v", name, err)
-		}
-
+		// FTS filter
 		var filterId string
 		if id > 0 {
 			filterId = rowIdStr
@@ -528,24 +529,19 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		}
 
 		if filter != nil {
-
 			// Insert Full text Search filter
 			query = `REPLACE into filters(noteId, filter) values(` + filterId + `, ?)`
-
-			_, err := tx.Exec(query, filter)
-			if err != nil {
-				tx.Rollback()
-				return fmt.Errorf("put filter [%s]: %v", name, err)
-			}
+		} else {
+			query = `DELETE FROM filters WHERE noteId=` + idStr
 		}
 
-		// filterId := rowIdStr
+		_, err = tx.Exec(query, filter)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("put filter [%s]: %v", name, err)
+		}
 
-		// if id == 0 {
-		// Query is INSERT, use rowId of the inserted row from the 'notes' table
-		// filterId = "last_insert_rowid()"
-		// }
-
+		// Extra fields
 		if noteId > 0 {
 			id = int(noteId)
 		}
