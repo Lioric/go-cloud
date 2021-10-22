@@ -43,6 +43,10 @@ type xattrs struct {
 // setAttrs creates a "path.attrs" file along with blob to store the attributes,
 // it uses line format.
 func setAttrs(path string, xa *xattrs) error {
+	if xa == nil {
+		return nil
+	}
+
 	if xa.Extra != nil {
 		val, ok := xa.Extra["AddMeta"]
 		if ok && val == "false" {

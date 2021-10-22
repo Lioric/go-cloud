@@ -258,6 +258,16 @@ func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) e
 }
 
 func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType string, opt *driver.WriterOptions) (driver.Writer, error) {
+	val, ok := opt.Extra["AddData"]
+	if ok && val == "false" {
+		// Marking an object for deletion, don't create a fs file
+		return &writer{
+			w:     nil,
+			path:  "",
+			attrs: nil,
+		}, nil
+	}
+
 	relpath, err := resolvePath(key, false)
 	if err != nil {
 		return nil, fmt.Errorf("open file blob %s: %v", key, err)
@@ -308,7 +318,11 @@ type writer struct {
 }
 
 func (w writer) Write(p []byte) (n int, err error) {
-	return w.w.Write(p)
+	if w.w != nil {
+		return w.w.Write(p)
+	}
+
+	return 0, nil
 }
 
 func (w writer) Close() error {

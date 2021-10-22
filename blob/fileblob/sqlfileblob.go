@@ -816,6 +816,7 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 		opt.Extra["AddMeta"] = "false"
 	}
 
+	// When setting meta only (as when marking an object for deletion) don't create a fs file in the fileblob module
 	addData := opt.Extra["AddData"] != "false"
 
 	// Object list info store just metadata, don't create an external file
@@ -902,12 +903,13 @@ type sqlWriter struct {
 }
 
 func (w sqlWriter) Write(p []byte) (n int, err error) {
-	return w.w.Write(p)
-	// if w.addData {
-	// 	return w.w.Write(p)
-	// }
+	if w.addData {
+		// Write fileblob data
+		return w.w.Write(p)
+	}
 
-	// return 0, nil
+	return 0, nil
+	// return w.w.Write(p)
 }
 
 func (w sqlWriter) Close() error {
