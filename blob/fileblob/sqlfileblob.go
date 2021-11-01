@@ -100,12 +100,18 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			revision INTEGER DEFAULT 0
 		);
 
-		CREATE TABLE extrafields (
-			noteId INTEGER NOT NULL,
-			name text NOT NULL,
+		CREATE TABLE extralist (
+			id INTEGER UNIQUE PRIMARY KEY,
+			name text UNIQUE NOT NULL
+		)
+
+		CREATE TABLE extramap (
+			noteId INTEGER PRIMARY KEY NOT NULL,
+			extraId INTEGER NOT NULL,
 			value text,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
-		);
+			FOREIGN KEY(extraId) REFERENCES extralist(id) ON UPDATE CASCADE ON DELETE CASCADE
+		 )
 
 		CREATE TABLE IF NOT EXISTS taglist (
 			id INTEGER UNIQUE PRIMARY KEY,
@@ -116,13 +122,14 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			noteId INTEGER NOT NULL,
 			tagId INTEGER NOT NULL,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			FOREIGN KEY(tagId) REFERENCES tags(id) ON UPDATE CASCADE ON DELETE CASCADE
+			FOREIGN KEY(tagId) REFERENCES taglist(id) ON UPDATE CASCADE ON DELETE CASCADE
 			PRIMARY KEY (noteId,tagId)
 		 );
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX noteIndex ON extrafields(noteId);
+		CREATE INDEX extraIndex ON extramap(noteId)
 
 		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
 		PARGMA user_version=3;
@@ -332,8 +339,8 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 		xa.Meta["tags"] = tags
 
 		// Extra fields
-		extraRows, err := db.Query("SELECT name, value from extrafields WHERE noteId=" + strconv.FormatInt(int64(id), 10))
-		// extraRows, err := db.Query("SELECT * from extrafields WHERE rowid IN (" + extraFields + ")")
+		extraRows, err := db.Query("SELECT name, value from extramap, extralist ON extramap.extraId=extralist.id WHERE noteId=" + strconv.FormatInt(int64(id), 10))
+		// extraRows, err := db.Query("SELECT name, value from extrafields WHERE noteId=" + strconv.FormatInt(int64(id), 10))
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
 		}
@@ -554,7 +561,8 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			// }
 
 			// Extra fields
-			extraSmtm, err := tx.Prepare(`insert into extrafields(noteId, name, value) values(?, ?, ?)`)
+			extraSmtm, err := tx.Prepare(`INSERT INTO extramap (noteId,extraId,value) VALUES(?, (SELECT id FROM extralist WHERE name=?), ?)`)
+			// extraSmtm, err := tx.Prepare(`insert into extrafields(noteId, name, value) values(?, ?, ?)`)
 			if err != nil {
 				tx.Rollback()
 				return fmt.Errorf("put metadata [%s]: %v", name, err)
@@ -917,7 +925,12 @@ func (w sqlWriter) Close() error {
 			return fmt.Errorf("write blob attributes: %v", err)
 		}
 	}
-	return w.w.Close()
+
+	if w.addData {
+		return w.w.Close()
+	}
+
+	return nil
 }
 
 // Move is used only by the revision system when creating
