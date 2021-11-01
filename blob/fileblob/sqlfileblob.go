@@ -103,7 +103,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE TABLE extralist (
 			id INTEGER UNIQUE PRIMARY KEY,
 			name text UNIQUE NOT NULL
-		)
+		);
 
 		CREATE TABLE extramap (
 			noteId INTEGER PRIMARY KEY NOT NULL,
@@ -111,7 +111,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			value text,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
 			FOREIGN KEY(extraId) REFERENCES extralist(id) ON UPDATE CASCADE ON DELETE CASCADE
-		 )
+		 );
 
 		CREATE TABLE IF NOT EXISTS taglist (
 			id INTEGER UNIQUE PRIMARY KEY,
@@ -129,7 +129,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX noteIndex ON extrafields(noteId);
-		CREATE INDEX extraIndex ON extramap(noteId)
+		CREATE INDEX extraIndex ON extramap(noteId);
 
 		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
 		PARGMA user_version=3;
