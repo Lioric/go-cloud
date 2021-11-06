@@ -106,7 +106,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		);
 
 		CREATE TABLE extramap (
-			noteId INTEGER PRIMARY KEY NOT NULL,
+			noteId INTEGER NOT NULL,
 			extraId INTEGER NOT NULL,
 			value text,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
@@ -554,11 +554,22 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		}
 
 		if len(extraFields) > 0 {
-			// tx, err := db.Begin()
-			// if err != nil {
-			// 	tx.Rollback()
-			// 	return fmt.Errorf("put metadata [%s]: %v", name, err)
-			// }
+			extraNames := ""
+
+			for i, extra := range extraFields {
+				if i > 0 {
+					extraNames += ","
+				}
+
+				extraNames += "('" + extra.name + "')"
+			}
+
+			query = "INSERT OR IGNORE INTO extralist(name) VALUES" + extraNames + ";"
+			_, err = tx.Exec(query)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("put extra names [%s]: %v", name, err)
+			}
 
 			// Extra fields
 			extraSmtm, err := tx.Prepare(`INSERT INTO extramap (noteId,extraId,value) VALUES(?, (SELECT id FROM extralist WHERE name=?), ?)`)
