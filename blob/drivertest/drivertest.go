@@ -155,7 +155,7 @@ func testRead(t *testing.T, newHarness HarnessMaker) {
 			b, done := init(t)
 			defer done()
 
-			r, err := b.NewRangeReader(ctx, tc.key, tc.offset, tc.length)
+			r, err := b.NewRangeReader(ctx, tc.key, tc.offset, tc.length, false)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("got err %v want error %v", err, tc.wantErr)
 			}
@@ -228,7 +228,7 @@ func testAttributes(t *testing.T, newHarness HarnessMaker) {
 		b, done := init(t)
 		defer done()
 
-		r, err := b.NewRangeReader(ctx, key, 0, 0)
+		r, err := b.NewRangeReader(ctx, key, 0, 0, false)
 		if err != nil {
 			t.Fatalf("failed NewRangeReader: %v", err)
 		}
@@ -245,7 +245,7 @@ func testAttributes(t *testing.T, newHarness HarnessMaker) {
 				b, done := init(t)
 				defer done()
 
-				r, err := b.NewRangeReader(ctx, key, 0, rLen)
+				r, err := b.NewRangeReader(ctx, key, 0, rLen, false)
 				if err != nil {
 					t.Fatalf("failed NewRangeReader: %v", err)
 				}
@@ -259,7 +259,7 @@ func testAttributes(t *testing.T, newHarness HarnessMaker) {
 				b, done := init(t)
 				defer done()
 
-				r, err := b.NewRangeReader(ctx, key, 0, rLen)
+				r, err := b.NewRangeReader(ctx, key, 0, rLen, false)
 				if err != nil {
 					t.Fatalf("failed NewRangeReader: %v", err)
 				}
@@ -281,7 +281,7 @@ func testAttributes(t *testing.T, newHarness HarnessMaker) {
 				if err = w.Close(); err != nil {
 					t.Errorf("failed Close Writer: %v", err)
 				}
-				r2, err := b.NewRangeReader(ctx, key, 0, rLen)
+				r2, err := b.NewRangeReader(ctx, key, 0, rLen, false)
 				if err != nil {
 					t.Errorf("failed NewRangeReader#2: %v", err)
 				}
@@ -423,7 +423,7 @@ func testWrite(t *testing.T, newHarness HarnessMaker, pathToTestdata string) {
 			defer func() { _ = b.Delete(ctx, tc.key) }()
 
 			// Read it back.
-			r, err := b.NewReader(ctx, tc.key)
+			r, err := b.NewReader(ctx, tc.key, false)
 			if err != nil {
 				t.Fatalf("failed to NewReader: %v", err)
 			}
@@ -496,7 +496,7 @@ func testDelete(t *testing.T, newHarness HarnessMaker) {
 			t.Errorf("got unexpected error deleting blob: %v", err)
 		}
 		// Subsequent read fails with IsNotExist.
-		_, err = b.NewReader(ctx, key)
+		_, err = b.NewReader(ctx, key, false)
 		if err == nil {
 			t.Errorf("read after delete want error, got nil")
 		} else if !blob.IsNotExist(err) {

@@ -114,7 +114,7 @@ func resolvePath(rawKey string, exactKeyName bool) (string, error) {
 
 	key = resolveLocalFSPath(key)
 
-	if exactKeyName != true {
+	if !exactKeyName {
 		key += ".mb"
 	}
 
@@ -242,15 +242,15 @@ func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) e
 
 	path := filepath.Join(b.dir, area)
 	err := os.Mkdir(path, 0777)
-	if err != nil && os.IsExist(err) == false {
-		return fmt.Errorf("Create area %s: %v", area, err)
+	if err != nil && !os.IsExist(err) {
+		return fmt.Errorf("create area %s: %v", area, err)
 	}
 
 	for _, group := range groups {
 		meta := filepath.Join(path, group)
 		err = os.Mkdir(meta, 0777)
-		if err != nil && os.IsExist(err) == false {
-			return fmt.Errorf("Create group in %s: %v", area, err)
+		if err != nil && !os.IsExist(err) {
+			return fmt.Errorf("create group in %s: %v", area, err)
 		}
 	}
 

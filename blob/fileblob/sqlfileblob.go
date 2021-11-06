@@ -209,7 +209,7 @@ func (b *sqlbucket) getMetadataElements(key string) (string, string, string) {
 func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string) (*xattrs, error) {
 	list := strings.SplitN(key, "/", 2)
 	if len(list) < 2 {
-		return nil, fmt.Errorf("Incorrect key id: %s", key)
+		return nil, fmt.Errorf("incorrect key id: %s", key)
 	}
 
 	db, err := openDB(ctx, sql)
@@ -218,7 +218,7 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 	}
 
 	if db == nil {
-		return nil, fmt.Errorf("Unable to open: %s", sql)
+		return nil, fmt.Errorf("unable to open: %s", sql)
 	}
 
 	defer db.Close()
@@ -289,7 +289,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 			// 	Msg("Failed to iterate rows")
 		}
 
-		if isRow == false {
+		if !isRow {
 			return nil, sqlFileError{key: objName, msg: "no key in metadata", kind: driver.NotFound}
 		}
 
@@ -387,7 +387,7 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, re
 
 	list := strings.SplitN(key, "/", 2)
 	if len(list) < 2 {
-		return fmt.Errorf("Incorrect key name: %s", key)
+		return fmt.Errorf("incorrect key name: %s", key)
 	}
 
 	keyName := list[1]
@@ -434,6 +434,9 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		}
 
 		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("transaction [%s]: %v", name, err)
+		}
 
 		// if len(extraFieldIds) > 0 {
 		// 	// Delete previous extra fields
@@ -703,7 +706,7 @@ func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, leng
 		info, err := os.Stat(path)
 		if err != nil {
 			// Info only metadata doesn't have a file in the storage area
-			if os.IsNotExist(err) == false {
+			if !os.IsNotExist(err) {
 				return nil, fmt.Errorf("open file blob %s: %v", key, err)
 			}
 
@@ -773,7 +776,7 @@ func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, leng
 
 func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string) error {
 	err := b.fileBucket.CreateArea(ctx, area, groups)
-	if err != nil && os.IsExist(err) == false {
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 
@@ -873,8 +876,8 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 }
 
 type InfoDataWriter struct {
-	ctx      context.Context
-	w        io.WriteCloser
+	ctx context.Context
+	// w        io.WriteCloser
 	b        *sqlbucket
 	id       int
 	key      string
@@ -889,11 +892,11 @@ func (w InfoDataWriter) Write(p []byte) (n int, err error) {
 func (w InfoDataWriter) Close() error {
 	rev, ok := w.meta["rev"]
 	if ok == false {
-		return fmt.Errorf("No revision provided[%s]", w.key)
+		return fmt.Errorf("no revision provided[%s]", w.key)
 	}
 
-	extra, _ := w.meta["extra"]
-	mod, _ := w.meta["mod"]
+	extra := w.meta["extra"]
+	mod := w.meta["mod"]
 	modTime, _ := strconv.ParseInt(mod, 10, 0)
 
 	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, int(modTime), extra)
