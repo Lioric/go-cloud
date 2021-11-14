@@ -128,7 +128,6 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
-		CREATE INDEX noteIndex ON extrafields(noteId);
 		CREATE INDEX extraIndex ON extramap(noteId);
 
 		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
