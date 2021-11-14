@@ -131,7 +131,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX extraIndex ON extramap(noteId);
 
 		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
-		PARGMA user_version=3;
+		PRAGMA user_version=3;
 	`
 
 	// INSERT INTO notes (id, title, created, revision, modifier) VALUES (0,` + TITLE_INFO_ENTRY + `, CURRENT_TIMESTAMP, 0, 0)
