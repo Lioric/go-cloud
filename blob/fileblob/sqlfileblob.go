@@ -28,6 +28,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -133,6 +134,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
 		PRAGMA user_version=3;
 	`
+
+	log.Print(query)
 
 	// INSERT INTO notes (id, title, created, revision, modifier) VALUES (0,` + TITLE_INFO_ENTRY + `, CURRENT_TIMESTAMP, 0, 0)
 
