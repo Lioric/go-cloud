@@ -191,6 +191,36 @@ type bucket struct {
 	uploader *s3manager.Uploader
 }
 
+func (b *bucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
+	in := &s3.HeadObjectInput{
+		Bucket: aws.String(b.name),
+		Key:    aws.String(key),
+	}
+	req, resp := b.client.HeadObjectRequest(in)
+	if err := req.Send(); err != nil {
+		if e := isErrNotExist(err); e != nil {
+			return nil, s3Error{bucket: b.name, key: key, msg: e.Message(), kind: driver.NotFound}
+		}
+		return nil, err
+	}
+
+	val := aws.StringValue(resp.Metadata["revision"])
+	revision, _ := strconv.ParseInt(val, 10, 0)
+	intRevision := int(revision)
+	rev := aws.IntValue(&intRevision)
+
+	return &driver.ObjectAttrs{
+		Size:        aws.Int64Value(resp.ContentLength),
+		ContentType: aws.StringValue(resp.ContentType),
+		ModTime:     aws.TimeValue(resp.LastModified),
+		Name:        key,
+		Fields:      aws.StringValueMap(resp.Metadata),
+		Revision:    rev,
+		// Id,
+		// Extra,
+	}, nil
+}
+
 // NewRangeReader returns a reader that reads part of an object, reading at most
 // length bytes starting at the given offset. If length is 0, it will read only
 // the metadata. If length is negative, it will read till the end of the object.
@@ -199,9 +229,9 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 	if offset < 0 {
 		return nil, fmt.Errorf("negative offset %d", offset)
 	}
-	if length == 0 {
-		return b.newMetadataReader(ctx, key)
-	}
+	// if length == 0 {
+	// 	return b.newMetadataReader(ctx, key)
+	// }
 	in := &s3.GetObjectInput{
 		Bucket: aws.String(b.name),
 		Key:    aws.String(key),

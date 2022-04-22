@@ -93,7 +93,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 		CREATE TABLE notes (
 			id INTEGER PRIMARY KEY,
-			title text NOT NULL,
+			uid TEXT UNIQUE NOT NULL,
+			title TEXT NOT NULL,
 			creator TEXT DEFAULT "",
 			created INTEGER NOT NULL,
 			modified INTEGER NOT NULL,
@@ -103,20 +104,20 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 		CREATE TABLE extralist (
 			id INTEGER UNIQUE PRIMARY KEY,
-			name text UNIQUE NOT NULL
+			name TEXT UNIQUE NOT NULL
 		);
 
 		CREATE TABLE extramap (
 			noteId INTEGER NOT NULL,
 			extraId INTEGER NOT NULL,
-			value text,
+			value TEXT,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE
 			FOREIGN KEY(extraId) REFERENCES extralist(id) ON UPDATE CASCADE ON DELETE CASCADE
 		 );
 
 		CREATE TABLE IF NOT EXISTS taglist (
 			id INTEGER UNIQUE PRIMARY KEY,
-			tags text UNIQUE NOT NULL
+			tags TEXT UNIQUE NOT NULL
 		 );
 
 		 CREATE TABLE IF NOT EXISTS tagmap (
@@ -248,8 +249,16 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 	return xa, nil
 }
 
-func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error) {
+func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*xattrs, error) {
 	sql, objName, _ := b.getMetadataElements(key)
+
+	var query string
+
+	if isUID {
+		query = "SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE uuid = ?"
+	} else {
+		query = "SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?"
+	}
 
 	if strings.HasPrefix(objName, "$:/") {
 		// Key is from INFO table
@@ -264,8 +273,8 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string) (*xattrs, error
 	if db != nil {
 		defer db.Close()
 
-		rows, err := db.Query("SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?", objName)
-		// rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision,extraFields from notes where title = ?", objName)
+		rows, err := db.Query(query, objName)
+		// rows, err := db.Query("SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?", objName)
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
 		}
@@ -687,51 +696,84 @@ func OpenSqlBucket(dir string) (*blob.Bucket, error) {
 // 	return filepath.FromSlash(key), nil
 // }
 
-func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
-	if length == 0 {
-		// Get metadata
-		meta, err := b.getMetadata(ctx, key)
-		if err != nil {
-			return nil, err
-		}
-
-		var size int64
-		var modTime time.Time
-
-		relpath, err := resolvePath(key, exactKeyName)
-		if err != nil {
-			return nil, fmt.Errorf("open metadata blob %s: %v", key, err)
-		}
-
-		path := filepath.Join(b.dir, relpath)
-
-		info, err := os.Stat(path)
-		if err != nil {
-			// Info only metadata doesn't have a file in the storage area
-			if !os.IsNotExist(err) {
-				return nil, fmt.Errorf("open file blob %s: %v", key, err)
-			}
-
-		} else {
-			size = info.Size()
-			modTime = info.ModTime()
-		}
-
-		// path := filepath.Join(b.dir, relpath)
-		// info, err := os.Stat(path)
-		// if err != nil {
-		// 	if os.IsNotExist(err) {
-		// 		return nil, fileError{relpath: relpath, msg: err.Error(), kind: driver.NotFound}
-		// 	}
-		// 	return nil, fmt.Errorf("open file blob %s: %v", key, err)
-		// }
-
-		return reader{
-			size:    size,
-			modTime: modTime,
-			xa:      meta,
-		}, nil
+func (b *sqlbucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
+	// Get metadata
+	meta, err := b.getMetadata(ctx, key, isUID)
+	if err != nil {
+		return nil, err
 	}
+
+	var size int64
+	var modTime time.Time
+
+	relpath, err := resolvePath(meta.Name, false)
+	if err != nil {
+		return nil, fmt.Errorf("open metadata blob %s: %v", key, err)
+	}
+
+	path := filepath.Join(b.dir, relpath)
+
+	info, err := os.Stat(path)
+	if err != nil {
+		// Info only metadata doesn't have a file in the storage area
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("open file blob %s: %v", key, err)
+		}
+
+	} else {
+		size = info.Size()
+		modTime = info.ModTime()
+	}
+
+	return &driver.ObjectAttrs{
+		Size:        size,
+		ContentType: meta.ContentType,
+		ModTime:     modTime,
+		Name:        meta.Name,
+		Fields:      meta.Meta,
+		Revision:    meta.Revision,
+		Id:          meta.Id,
+		Extra:       meta.Extra,
+	}, nil
+
+}
+
+func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
+	// if length < 1 {
+	// 	// Get metadata
+	// 	meta, err := b.getMetadata(ctx, key, length == -1)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	var size int64
+	// 	var modTime time.Time
+
+	// 	relpath, err := resolvePath(key, exactKeyName)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("open metadata blob %s: %v", key, err)
+	// 	}
+
+	// 	path := filepath.Join(b.dir, relpath)
+
+	// 	info, err := os.Stat(path)
+	// 	if err != nil {
+	// 		// Info only metadata doesn't have a file in the storage area
+	// 		if !os.IsNotExist(err) {
+	// 			return nil, fmt.Errorf("open file blob %s: %v", key, err)
+	// 		}
+
+	// 	} else {
+	// 		size = info.Size()
+	// 		modTime = info.ModTime()
+	// 	}
+
+	// 	return reader{
+	// 		size:    size,
+	// 		modTime: modTime,
+	// 		xa:      meta,
+	// 	}, nil
+	// }
 
 	// Get object data
 	r, err := b.fileBucket.NewRangeReader(ctx, key, offset, length, exactKeyName)

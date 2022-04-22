@@ -96,6 +96,12 @@ type Bucket interface {
 	// object storage based providers use object whole path as its key, so there is no need to pre create or setup its area
 	CreateArea(ctx context.Context, area string, groups []string) error
 
+	// Attributes returns attributes for the blob. If the specified object does
+	// not exist, Attributes must return an error for which ErrorCode returns
+	// gcerrors.NotFound.
+	// The portable type will not modify the returned Attributes.
+	Attributes(ctx context.Context, key string, isUID bool) (*Attributes, error)
+
 	// NewRangeReader returns a Reader that reads part of an object, reading at
 	// most length bytes starting at the given offset. If length is 0, it will read
 	// only the metadata. If length is negative, it will read till the end of the

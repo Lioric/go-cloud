@@ -99,6 +99,31 @@ func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) e
 	return nil
 }
 
+func (b *bucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
+	bkt := b.client.Bucket(b.name)
+	obj := bkt.Object(key)
+	attrs, err := obj.Attrs(ctx)
+	if err != nil {
+		if isErrNotExist(err) {
+			return nil, gcsError{bucket: b.name, key: key, msg: err.Error(), kind: driver.NotFound}
+		}
+		return nil, err
+	}
+
+	rev, _ := strconv.ParseInt(attrs.Metadata["revision"], 10, 0)
+
+	return &driver.ObjectAttrs{
+		Size:        attrs.Size,
+		ContentType: attrs.ContentType,
+		ModTime:     attrs.Updated,
+		Name:        attrs.Name,
+		Fields:      attrs.Metadata,
+		Revision:    int(rev),
+		// Id,
+		// Extra,
+	}, nil
+}
+
 // NewRangeReader returns a Reader that reads part of an object, reading at most
 // length bytes starting at the given offset. If length is 0, it will read only
 // the metadata. If length is negative, it will read till the end of the object.
@@ -109,28 +134,28 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 	}
 	bkt := b.client.Bucket(b.name)
 	obj := bkt.Object(key)
-	if length == 0 {
-		attrs, err := obj.Attrs(ctx)
-		if err != nil {
-			if isErrNotExist(err) {
-				return nil, gcsError{bucket: b.name, key: key, msg: err.Error(), kind: driver.NotFound}
-			}
-			return nil, err
-		}
+	// if length == 0 {
+	// 	attrs, err := obj.Attrs(ctx)
+	// 	if err != nil {
+	// 		if isErrNotExist(err) {
+	// 			return nil, gcsError{bucket: b.name, key: key, msg: err.Error(), kind: driver.NotFound}
+	// 		}
+	// 		return nil, err
+	// 	}
 
-		rev, _ := strconv.ParseInt(attrs.Metadata["revision"], 10, 0)
+	// 	rev, _ := strconv.ParseInt(attrs.Metadata["revision"], 10, 0)
 
-		return &reader{
-			body:        emptyBody,
-			size:        attrs.Size,
-			contentType: attrs.ContentType,
-			updated:     attrs.Updated,
+	// 	return &reader{
+	// 		body:        emptyBody,
+	// 		size:        attrs.Size,
+	// 		contentType: attrs.ContentType,
+	// 		updated:     attrs.Updated,
 
-			// Tiddler metadata
-			revision: int(rev),
-			metadata: attrs.Metadata,
-		}, nil
-	}
+	// 		// Tiddler metadata
+	// 		revision: int(rev),
+	// 		metadata: attrs.Metadata,
+	// 	}, nil
+	// }
 	r, err := obj.NewRangeReader(ctx, offset, length)
 	if err != nil {
 		if isErrNotExist(err) {
