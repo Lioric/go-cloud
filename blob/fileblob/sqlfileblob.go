@@ -733,7 +733,7 @@ func (b *sqlbucket) Attributes(ctx context.Context, key string, isUID bool) (*dr
 		Fields:      meta.Meta,
 		Revision:    meta.Revision,
 		Id:          meta.Id,
-		Extra:       meta.Extra,
+		// Extra:       meta.Extra,
 	}, nil
 
 }
