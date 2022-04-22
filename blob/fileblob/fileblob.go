@@ -146,6 +146,11 @@ func resolvePath(rawKey string, exactKeyName bool) (string, error) {
 	// return filepath.FromSlash(key) + ObjectExt, nil
 }
 
+func (b *bucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
+	// File blob is used via sqlfileblob only, attributes are not stored in a separated file
+	return nil, fmt.Errorf("File blob should be used via sqlfileblob")
+}
+
 func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
 	relpath, err := resolvePath(key, exactKeyName)
 	if err != nil {
