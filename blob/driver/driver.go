@@ -100,7 +100,7 @@ type Bucket interface {
 	// not exist, Attributes must return an error for which ErrorCode returns
 	// gcerrors.NotFound.
 	// The portable type will not modify the returned Attributes.
-	Attributes(ctx context.Context, key string, isUID bool) (*Attributes, error)
+	Attributes(ctx context.Context, key string, isUID bool) (*ObjectAttrs, error)
 
 	// NewRangeReader returns a Reader that reads part of an object, reading at
 	// most length bytes starting at the given offset. If length is 0, it will read

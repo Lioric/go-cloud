@@ -159,6 +159,15 @@ func (b *Bucket) CreateArea(ctx context.Context, area string, groups []string) e
 	return b.b.CreateArea(ctx, area, groups)
 }
 
+// Attributes returns attributes for the blob. If the specified object does
+// not exist, Attributes must return an error for which ErrorCode returns
+// gcerrors.NotFound.
+// The portable type will not modify the returned Attributes.
+func (b *Bucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
+	return b.Attributes(ctx, key, isUID)
+
+}
+
 // NewReader returns a Reader to read from an object, or an error when the object
 // is not found by the given key, which can be checked by calling IsNotExist.
 //
