@@ -523,7 +523,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 
 		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?)`
 
-		rowRes, err := tx.Exec(query, title, creator, created, modified, modifier, revision)
+		rowRes, err := tx.Exec(query, uuid, title, creator, created, modified, modifier, revision)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("put metadata [%s]: %v", name, err)
