@@ -711,15 +711,15 @@ func (b *sqlbucket) Attributes(ctx context.Context, key string, isUID bool) (*dr
 	var size int64
 	var modTime time.Time
 
-	var path string
+	var objPath string
 	if isUID {
 		pos := strings.LastIndex(key, "/")
-		path = key[:pos+1] + meta.Name
+		objPath = key[:pos+1] + meta.Name
 	} else {
-		path = key
+		objPath = key
 	}
 
-	relpath, err := resolvePath(path, false)
+	relpath, err := resolvePath(objPath, false)
 	if err != nil {
 		return nil, fmt.Errorf("open metadata blob %s: %v", key, err)
 	}
