@@ -93,7 +93,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 		CREATE TABLE notes (
 			id INTEGER PRIMARY KEY,
-			uid TEXT UNIQUE NOT NULL,
+			uuid TEXT UNIQUE NOT NULL,
 			title TEXT NOT NULL,
 			creator TEXT DEFAULT "",
 			created INTEGER NOT NULL,
@@ -255,9 +255,9 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 	var query string
 
 	if isUID {
-		query = "SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE uuid = ?"
+		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE uuid = ?"
 	} else {
-		query = "SELECT id,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?"
+		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?"
 	}
 
 	if strings.HasPrefix(objName, "$:/") {
@@ -281,6 +281,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 		defer rows.Close()
 
 		var id int
+		var uuid string
 		var title string
 		var creator string
 		var created string
@@ -307,7 +308,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 		xa := new(xattrs)
 		xa.Meta = make(map[string]string)
 
-		err = rows.Scan(&id, &title, &creator, &created, &modified, &modifier, &revision)
+		err = rows.Scan(&id, &uuid, &title, &creator, &created, &modified, &modifier, &revision)
 		// err = rows.Scan(&id, &title, &tags, &creator, &created, &modified, &modifier, &revision, &extraFields)
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
@@ -316,6 +317,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 		xa.Id = id
 		xa.Name = title
 		xa.Revision = revision
+		xa.Meta["_uuid"] = uuid
 		xa.Meta["creator"] = creator
 		xa.Meta["created"] = created
 		xa.Meta["modified"] = modified
@@ -461,6 +463,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		// var title string
 		title := objName
 		revision := revision
+		var uuid string
 		var tags string
 		var creator string
 		var created string
@@ -476,6 +479,8 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		for key, value := range meta {
 
 			switch key {
+			case "_uuid":
+				uuid = value
 			case "text":
 				// noop (text is stored in the data file)
 			case "title":
@@ -516,7 +521,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			idStr = strconv.FormatInt(int64(id), 10)
 		}
 
-		query = `REPLACE INTO notes(id, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?)`
+		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?)`
 
 		rowRes, err := tx.Exec(query, title, creator, created, modified, modifier, revision)
 		if err != nil {
