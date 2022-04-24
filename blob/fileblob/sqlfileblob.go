@@ -1100,10 +1100,10 @@ type sqlFileError struct {
 	kind     driver.ErrorKind
 }
 
-func (e sqlFileError) Error() string {
+func (e *sqlFileError) Error() string {
 	return fmt.Sprintf("sqlfileblob: key %s: %v", e.key, e.msg)
 }
 
-func (e sqlFileError) BlobError() driver.ErrorKind {
+func (e *sqlFileError) BlobError() driver.ErrorKind {
 	return e.kind
 }
