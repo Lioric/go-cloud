@@ -174,7 +174,7 @@ func openDB(ctx context.Context, name string) (*sql.DB, error) {
 	_, err := os.Stat(name)
 
 	if os.IsNotExist(err) {
-		return nil, sqlFileError{key: name, msg: "no metadata in area", kind: driver.NotFound}
+		return nil, &sqlFileError{key: name, msg: "no metadata in area", kind: driver.NotFound}
 		// // 	Create metadata database
 		// _, err := createDB(ctx, name)
 
@@ -302,7 +302,7 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 		}
 
 		if !isRow {
-			return nil, sqlFileError{key: objName, msg: "no key in metadata", kind: driver.NotFound}
+			return nil, &sqlFileError{key: objName, msg: "no key in metadata", kind: driver.NotFound}
 		}
 
 		xa := new(xattrs)
@@ -844,7 +844,7 @@ func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string
 
 	if err != nil {
 		if os.IsNotExist(err) {
-			return sqlFileError{key: area, msg: "area don't exists", kind: driver.NotFound}
+			return &sqlFileError{key: area, msg: "area don't exists", kind: driver.NotFound}
 		} else {
 			return err
 		}
