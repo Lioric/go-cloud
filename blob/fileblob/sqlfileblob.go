@@ -325,8 +325,8 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 		// xa.Meta["title"] = title
 
 		// Tags
-		tagRows, err := db.Query("SELECT tags FROM taglist WHERE id IN (SELECT tagId FROM tagmap WHERE noteId=(SELECT id FROM notes WHERE title='" + objName + "'))")
-		// rows, err := db.Query("select id,title,tags,creator,created,modified,modifier,revision,extraFields from notes where title = ?", objName)
+		tagRows, err := db.Query("SELECT tags FROM taglist WHERE id IN (SELECT tagId FROM tagmap WHERE noteId=?)", id)
+		// tagRows, err := db.Query("SELECT tags FROM taglist WHERE id IN (SELECT tagId FROM tagmap WHERE noteId=(SELECT id FROM notes WHERE title='" + objName + "'))")
 		if err != nil {
 			return nil, fmt.Errorf("get metadata: %v", err)
 		}
