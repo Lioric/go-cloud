@@ -164,7 +164,8 @@ func (b *Bucket) CreateArea(ctx context.Context, area string, groups []string) e
 // gcerrors.NotFound.
 // The portable type will not modify the returned Attributes.
 func (b *Bucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
-	return b.b.Attributes(ctx, key, isUID)
+	attrs, err := b.b.Attributes(ctx, key, isUID)
+	return attrs, newBlobError(err)
 
 }
 
