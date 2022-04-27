@@ -209,19 +209,19 @@ func (b *sqlbucket) getMetadataElements(key string) (string, string, string) {
 	return sql, objName, area
 }
 
-func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string) (*xattrs, error) {
+func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key string) (*xattrs, error) {
 	list := strings.SplitN(key, "/", 2)
 	if len(list) < 2 {
 		return nil, fmt.Errorf("incorrect key id: %s", key)
 	}
 
-	db, err := openDB(ctx, sql)
+	db, err := openDB(ctx, sqlName)
 	if err != nil {
 		return nil, err
 	}
 
 	if db == nil {
-		return nil, fmt.Errorf("unable to open: %s", sql)
+		return nil, fmt.Errorf("unable to open: %s", sqlName)
 	}
 
 	defer db.Close()
