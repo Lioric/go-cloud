@@ -87,7 +87,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			name text NOT NULL UNIQUE,
 			version INTEGER NOT NULL,
 			rev INTEGER NOT NULL,
-			mod INTEGER,
+			mod INTEGER NOT NULL,
 			extra BLOB
 		);
 
@@ -132,7 +132,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX extraIndex ON extramap(noteId);
 
-		INSERT INTO info(rowid, name, version, rev) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
+		INSERT INTO info(rowid, name, version, rev, mod) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0, 0);
 		PRAGMA user_version=3;
 	`
 
@@ -226,14 +226,14 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 
 	defer db.Close()
 
-	row := db.QueryRow("SELECT version,rev,extra,mod from info where name = ?", list[1])
+	row := db.QueryRow("SELECT version,rev,mod,extra from info where name = ?", list[1])
 
 	var version string
 	var rev string
-	var extra string
 	var mod string
+	var extra sql.NullString
 
-	err = row.Scan(&version, &rev, &extra, &mod)
+	err = row.Scan(&version, &rev, &mod, &extra)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting info metadata: %v", err)
 	}
@@ -243,8 +243,13 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sql string, key string)
 
 	xa.Meta["version"] = version
 	xa.Meta["rev"] = rev
-	xa.Meta["extra"] = extra
 	xa.Meta["mod"] = mod
+
+	if extra.Valid {
+		xa.Meta["extra"] = extra.String
+	} else {
+		xa.Meta["extra"] = ""
+	}
 
 	return xa, nil
 }
