@@ -132,7 +132,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			title TEXT UNIQUE NOT NULL,
 			meta TEXT,
 			modified INTEGER NOT NULL
-		)
+		);
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
