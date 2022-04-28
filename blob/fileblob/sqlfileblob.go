@@ -115,18 +115,24 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			FOREIGN KEY(extraId) REFERENCES extralist(id) ON UPDATE CASCADE ON DELETE CASCADE
 		 );
 
-		CREATE TABLE IF NOT EXISTS taglist (
+		CREATE TABLE taglist (
 			id INTEGER UNIQUE PRIMARY KEY,
 			tags TEXT UNIQUE NOT NULL
 		 );
 
-		 CREATE TABLE IF NOT EXISTS tagmap (
+		 CREATE TABLE tagmap (
 			noteId INTEGER NOT NULL,
 			tagId INTEGER NOT NULL,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			FOREIGN KEY(tagId) REFERENCES taglist(id) ON UPDATE CASCADE ON DELETE CASCADE
 			PRIMARY KEY (noteId,tagId)
 		 );
+
+		 CREATE TABLE recyclebin (
+			title TEXT UNIQUE NOT NULL,
+			meta TEXT,
+			modified INTEGER NOT NULL
+		)
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
