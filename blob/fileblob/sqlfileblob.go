@@ -86,8 +86,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE TABLE info (
 			name text NOT NULL UNIQUE,
 			version INTEGER NOT NULL,
-			rev INTEGER NOT NULL,
-			mod INTEGER NOT NULL,
+			checkpoint INTEGER NOT NULL,
 			extra BLOB
 		);
 
@@ -99,7 +98,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			created INTEGER NOT NULL,
 			modified INTEGER NOT NULL,
 			modifier TEXT DEFAULT "",
-			revision INTEGER DEFAULT 0
+			revision INTEGER DEFAULT 0,
+			checkpoint INTEGER NOT NULL,
 		);
 
 		CREATE TABLE extralist (
@@ -138,7 +138,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX extraIndex ON extramap(noteId);
 
-		INSERT INTO info(rowid, name, version, rev, mod) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0, 0);
+		INSERT INTO info(rowid, name, version, checkpoint) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
 		PRAGMA user_version=3;
 	`
 
@@ -232,14 +232,16 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key str
 
 	defer db.Close()
 
-	row := db.QueryRow("SELECT version,rev,mod,extra from info where name = ?", list[1])
+	row := db.QueryRow("SELECT version,checkpoint,extra from info where name = ?", list[1])
+	// row := db.QueryRow("SELECT version,rev,mod,extra from info where name = ?", list[1])
 
 	var version string
-	var rev string
-	var mod string
+	var checkpoint string
+	// var mod string
 	var extra sql.NullString
 
-	err = row.Scan(&version, &rev, &mod, &extra)
+	err = row.Scan(&version, &checkpoint, &extra)
+	// err = row.Scan(&version, &rev, &mod, &extra)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting info metadata: %v", err)
 	}
@@ -248,8 +250,8 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key str
 	xa.Meta = make(map[string]string)
 
 	xa.Meta["version"] = version
-	xa.Meta["rev"] = rev
-	xa.Meta["mod"] = mod
+	xa.Meta["rev"] = checkpoint
+	// xa.Meta["mod"] = mod
 
 	if extra.Valid {
 		xa.Meta["extra"] = extra.String
@@ -406,7 +408,8 @@ type extraField struct {
 }
 
 // Put info metadata
-func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, mod int, extra string) error {
+func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
+	// func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, mod int, extra string) error {
 	sql, key, _ := b.getMetadataElements(name)
 
 	list := strings.SplitN(key, "/", 2)
@@ -424,10 +427,11 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, re
 	if db != nil {
 		defer db.Close()
 
-		// idStr := strconv.FormatInt(int64(id), 10)
-		query := `REPLACE INTO info(name, version, rev, mod, extra) values("` + keyName + `", ?, ?, ?, ?)`
+		query := `REPLACE INTO info(name, version, checkpoint, extra) values("` + keyName + `", ?, ?, ?)`
+		// query := `REPLACE INTO info(name, version, rev, mod, extra) values("` + keyName + `", ?, ?, ?, ?)`
 
-		_, err := db.Exec(query, SCHEMA_VERSION, revision, mod, extra)
+		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
+		// _, err := db.Exec(query, SCHEMA_VERSION, revision, mod, extra)
 		if err != nil {
 			return fmt.Errorf("Error updating info metadata[%s]: %v", name, err)
 		}
@@ -532,7 +536,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			idStr = strconv.FormatInt(int64(id), 10)
 		}
 
-		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?)`
+		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT checkpoint+1 FROM info WHERE name='info'))`
 
 		rowRes, err := tx.Exec(query, uuid, title, creator, created, modified, modifier, revision)
 		if err != nil {
@@ -964,10 +968,11 @@ func (w InfoDataWriter) Close() error {
 	}
 
 	extra := w.meta["extra"]
-	mod := w.meta["mod"]
-	modTime, _ := strconv.ParseInt(mod, 10, 0)
+	// mod := w.meta["mod"]
+	// modTime, _ := strconv.ParseInt(mod, 10, 0)
 
-	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, int(modTime), extra)
+	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
+	// err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, int(modTime), extra)
 	if err != nil {
 		return fmt.Errorf("write blob attributes: %v", err)
 	}
