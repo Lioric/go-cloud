@@ -130,8 +130,15 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 		 CREATE TABLE recyclebin (
 			title TEXT UNIQUE NOT NULL,
-			meta TEXT,
-			modified INTEGER NOT NULL
+			uuid TEXT UNIQUE NOT NULL,
+			meta TEXT DEFAULT "",
+			modified INTEGER NOT NULL,
+			checkpoint INTEGER NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS deleted (
+			uuid TEXT UNIQUE NOT NULL,
+			checkpoint INTEGER NOT NULL
 		);
 
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
@@ -265,17 +272,17 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key str
 func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*xattrs, error) {
 	sql, objName, _ := b.getMetadataElements(key)
 
+	if strings.HasPrefix(objName, "$:/") {
+		// Key is from INFO table
+		return b.getInfoMetadata(ctx, sql, objName)
+	}
+
 	var query string
 
 	if isUID {
 		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE uuid = ?"
 	} else {
 		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?"
-	}
-
-	if strings.HasPrefix(objName, "$:/") {
-		// Key is from INFO table
-		return b.getInfoMetadata(ctx, sql, objName)
 	}
 
 	db, err := openDB(ctx, sql)
