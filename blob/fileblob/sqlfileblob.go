@@ -1045,7 +1045,14 @@ func (b *sqlbucket) Delete(ctx context.Context, key string) error {
 	if db != nil {
 		defer db.Close()
 
-		_, err = db.Exec("PRAGMA foreign_keys=ON;DELETE FROM notes WHERE title = ?;DELETE FROM recyclebin WHERE title= ?", objName, objName)
+		query := `
+			PRAGMA foreign_keys=ON;
+			REPLACE INTO deleted(uuid, checkpoint) VALUES(IFNULL((SELECT uuid FROM notes WHERE title=?1), (SELECT uuid FROM recyclebin WHERE title=?1)), (SELECT checkpoint+1 FROM info WHERE name='info'));
+			DELETE FROM notes WHERE title = ?1;
+			DELETE FROM recyclebin WHERE title= ?1;
+		`
+		_, err = db.Exec(query, objName)
+		// _, err = db.Exec(query, objName, objName, objName, objName)
 		if err != nil {
 			return fmt.Errorf("delete sql entry %s: %v", objName, err)
 		}
