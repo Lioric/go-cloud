@@ -1056,8 +1056,8 @@ func (b *sqlbucket) Delete(ctx context.Context, key string) error {
 			DELETE FROM notes WHERE title = ?1;
 			DELETE FROM recyclebin WHERE title= ?1;
 		`
-		_, err = tx.Exec(query, objName)
-		// _, err = db.Exec(query, objName, objName, objName, objName)
+		_, err = db.Exec(query, objName, objName, objName, objName)
+		// _, err = tx.Exec(query, objName)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("delete sql entry %s: %v", objName, err)
