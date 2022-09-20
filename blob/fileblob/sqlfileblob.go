@@ -141,6 +141,12 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			checkpoint INTEGER NOT NULL
 		);
 
+		CREATE TABLE IF NOT EXISTS merge (
+			noteId INTEGER REFERENCES notes(id) ON DELETE CASCADE,
+			field TEXT UNIQUE,
+			value TEXT
+		);
+
 		CREATE UNIQUE INDEX titleIndex ON notes(title);
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX extraIndex ON extramap(noteId);
@@ -1052,9 +1058,9 @@ func (b *sqlbucket) Delete(ctx context.Context, key string) error {
 
 		query := `
 			PRAGMA foreign_keys=ON;
-			REPLACE INTO deleted(uuid, checkpoint) VALUES(IFNULL((SELECT uuid FROM notes WHERE title=?1), (SELECT uuid FROM recyclebin WHERE title=?1)), (SELECT checkpoint+1 FROM info WHERE name='info'));
-			DELETE FROM notes WHERE title = ?1;
-			DELETE FROM recyclebin WHERE title= ?1;
+			REPLACE INTO deleted(uuid, checkpoint) VALUES(IFNULL((SELECT uuid FROM notes WHERE title=?1), (SELECT uuid FROM recyclebin WHERE title=?2)), (SELECT checkpoint+1 FROM info WHERE name='info'));
+			DELETE FROM notes WHERE title = ?3;
+			DELETE FROM recyclebin WHERE title= ?4;
 		`
 		_, err = db.Exec(query, objName, objName, objName, objName)
 		// _, err = tx.Exec(query, objName)
