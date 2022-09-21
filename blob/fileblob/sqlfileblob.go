@@ -529,6 +529,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 				if err != nil {
 					filter = nil
 				}
+			case "checkpoint":
 			case "revision":
 				// rev, _ := strconv.ParseInt(value, 10, 0)
 				// revision = int(rev)
