@@ -175,7 +175,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 	defer ftsDB.Close()
 
 	query = `CREATE table filters (
-		noteId INTEGER PRIMARY KEY,
+		uuid TEXT PRIMARY KEY,
 		filter BLOB
 	)`
 
@@ -576,18 +576,18 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		}
 
 		// FTS filter
-		var filterId string
-		if id > 0 {
-			filterId = rowIdStr
-		} else {
-			filterId = strconv.FormatInt(noteId, 10)
-		}
+		// var filterId string
+		// if id > 0 {
+		// 	filterId = rowIdStr
+		// } else {
+		// 	filterId = strconv.FormatInt(noteId, 10)
+		// }
 
 		if filter != nil {
 			// Insert Full text Search filter
-			query = `REPLACE into filters(noteId, filter) values(` + filterId + `, ?)`
+			query = `REPLACE into filters(uuid, filter) values(` + uuid + `, ?)`
 		} else {
-			query = `DELETE FROM filters WHERE noteId=` + idStr
+			query = `DELETE FROM filters WHERE uuid=` + uuid
 		}
 
 		_, err = tx.Exec(query, filter)
