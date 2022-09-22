@@ -585,9 +585,9 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 
 		if filter != nil {
 			// Insert Full text Search filter
-			query = `REPLACE into filters(uuid, filter) values(` + uuid + `, ?)`
+			query = `REPLACE into filters(uuid, filter) values('` + uuid + `', ?)`
 		} else {
-			query = `DELETE FROM filters WHERE uuid=` + uuid
+			query = `DELETE FROM filters WHERE uuid='` + uuid + "'"
 		}
 
 		_, err = tx.Exec(query, filter)
