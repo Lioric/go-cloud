@@ -541,7 +541,7 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		}
 
 		var query string
-		var rowIdStr = strconv.FormatInt(int64(id), 10)
+		// var rowIdStr = strconv.FormatInt(int64(id), 10)
 		// var filterQuery string
 
 		idStr := "null"
