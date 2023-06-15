@@ -323,7 +323,7 @@ type writer struct {
 }
 
 func (w writer) Write(p []byte) (n int, err error) {
-	if w.w != nil {
+	if w.w != nil && len(p) > 0 {
 		return w.w.Write(p)
 	}
 

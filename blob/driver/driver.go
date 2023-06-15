@@ -67,6 +67,8 @@ type WriterOptions struct {
 	Id    int
 	Name  string
 	Extra map[string]string
+	// Size of the text segment
+	ContentSize int
 }
 
 // ObjectAttrs contains metadata of an object.

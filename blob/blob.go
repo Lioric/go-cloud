@@ -210,11 +210,12 @@ func (b *Bucket) NewWriter(ctx context.Context, key string, opt *WriterOptions) 
 		dopt = &driver.WriterOptions{
 			BufferSize: opt.BufferSize,
 			// Tiddler metadata
-			Id:       opt.Id,
-			Name:     opt.Name,
-			Revision: opt.Revision,
-			Metadata: opt.Meta,
-			Extra:    opt.Extra,
+			Id:          opt.Id,
+			Name:        opt.Name,
+			Revision:    opt.Revision,
+			Metadata:    opt.Meta,
+			Extra:       opt.Extra,
+			ContentSize: opt.ContentSize,
 		}
 
 		if opt.ContentType != "" {
@@ -275,6 +276,8 @@ type WriterOptions struct {
 	Id    int
 	Name  string
 	Extra map[string]string
+	// Size of the text segment
+	ContentSize int
 }
 
 type blobError struct {
