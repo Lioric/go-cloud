@@ -921,7 +921,7 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 	}
 
 	// When setting meta only (as when marking an object for deletion) don't create a fs file in the fileblob module
-	addData := opt.Extra["AddData"] != "false" && opt.ContentSize > 0
+	addData := opt.Extra["AddData"] != "false"
 
 	// Object list info store just metadata, don't create an external file
 	addInfo := false
