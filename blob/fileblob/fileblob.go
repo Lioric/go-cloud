@@ -264,7 +264,7 @@ func (b *bucket) CreateArea(ctx context.Context, area string, groups []string) e
 
 func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType string, opt *driver.WriterOptions) (driver.Writer, error) {
 	val, ok := opt.Extra["AddData"]
-	if ok && val == "false" {
+	if (ok && val == "false") || opt.ContentSize == 0 {
 		// Marking an object for deletion, don't create a fs file
 		return &writer{
 			w:     nil,
