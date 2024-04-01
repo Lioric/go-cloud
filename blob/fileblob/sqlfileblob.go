@@ -57,7 +57,7 @@ type sqlbucket struct {
 var sPathSep = string(os.PathSeparator)
 
 const SCHEMA_VERSION string = "1"
-const NAME_INFO_ENTRY = "info"
+const CHECKPOINT_INFO_ENTRY = "checkpoint"
 
 // var sBucketLocation string
 
@@ -85,9 +85,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 	query := `
 		CREATE TABLE info (
 			name text NOT NULL UNIQUE,
-			version INTEGER NOT NULL,
-			checkpoint INTEGER NOT NULL,
-			extra BLOB
+			value TEXT NOT NULL,
+			extra TEXT
 		);
 
 		CREATE TABLE notes (
@@ -151,8 +150,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX extraIndex ON extramap(noteId);
 
-		INSERT INTO info(rowid, name, version, checkpoint) VALUES (0,"` + NAME_INFO_ENTRY + `",` + SCHEMA_VERSION + `, 0);
-		PRAGMA user_version=3;
+		INSERT INTO info(rowid, name, value) VALUES (0,"` + CHECKPOINT_INFO_ENTRY + `", 0);
+		PRAGMA user_version=` + SCHEMA_VERSION + `;
 	`
 
 	log.Print(query)
@@ -245,16 +244,16 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key str
 
 	defer db.Close()
 
-	row := db.QueryRow("SELECT version,checkpoint,extra from info where name = ?", list[1])
+	// Checkpoint
+	row := db.QueryRow("SELECT value,extra FROM info WHERE name=?", list[1])
+	// row := db.QueryRow("SELECT version,checkpoint,extra from info where name = ?", list[1])
 	// row := db.QueryRow("SELECT version,rev,mod,extra from info where name = ?", list[1])
 
-	var version string
-	var checkpoint string
-	// var mod string
+	var value string
 	var extra sql.NullString
 
-	err = row.Scan(&version, &checkpoint, &extra)
-	// err = row.Scan(&version, &rev, &mod, &extra)
+	err = row.Scan(&value, &extra)
+	// err = row.Scan(&version, &checkpoint, &extra)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting info metadata: %v", err)
 	}
@@ -262,9 +261,10 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key str
 	xa := new(xattrs)
 	xa.Meta = make(map[string]string)
 
-	xa.Meta["version"] = version
-	xa.Meta["rev"] = checkpoint
-	// xa.Meta["mod"] = mod
+	xa.Meta["value"] = value
+
+	// xa.Meta["version"] = version
+	// xa.Meta["rev"] = checkpoint
 
 	if extra.Valid {
 		xa.Meta["extra"] = extra.String
@@ -286,9 +286,9 @@ func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 	var query string
 
 	if isUID {
-		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE uuid = ?"
+		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE uuid=?"
 	} else {
-		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE title = ?"
+		query = "SELECT id,uuid,title,creator,created,modified,modifier,revision FROM notes WHERE title=?"
 	}
 
 	db, err := openDB(ctx, sql)
@@ -421,8 +421,8 @@ type extraField struct {
 }
 
 // Put info metadata
-func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, extra string) error {
-	// func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, revision string, mod int, extra string) error {
+func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, value string, extra string) error {
+	// func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, value string, extra string) error {
 	sql, key, _ := b.getMetadataElements(name)
 
 	list := strings.SplitN(key, "/", 2)
@@ -440,11 +440,12 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, re
 	if db != nil {
 		defer db.Close()
 
-		query := `REPLACE INTO info(name, version, checkpoint, extra) values("` + keyName + `", ?, ?, ?)`
+		query := `REPLACE INTO info(name, value, extra) values("` + keyName + `", ?, ?)`
+		// query := `REPLACE INTO info(name, version, checkpoint, extra) values("` + keyName + `", ?, ?, ?)`
 		// query := `REPLACE INTO info(name, version, rev, mod, extra) values("` + keyName + `", ?, ?, ?, ?)`
 
-		_, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
-		// _, err := db.Exec(query, SCHEMA_VERSION, revision, mod, extra)
+		_, err := db.Exec(query, value, extra)
+		// _, err := db.Exec(query, SCHEMA_VERSION, revision, extra)
 		if err != nil {
 			return fmt.Errorf("Error updating info metadata[%s]: %v", name, err)
 		}
@@ -550,7 +551,8 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			idStr = strconv.FormatInt(int64(id), 10)
 		}
 
-		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT checkpoint+1 FROM info WHERE name='info'))`
+		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT value+1 FROM info WHERE name='checkpoint'))`
+		// query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT checkpoint+1 FROM info WHERE name='info'))`
 
 		rowRes, err := tx.Exec(query, uuid, title, creator, created, modified, modifier, revision)
 		if err != nil {
@@ -985,8 +987,8 @@ func (w InfoDataWriter) Close() error {
 	// mod := w.meta["mod"]
 	// modTime, _ := strconv.ParseInt(mod, 10, 0)
 
-	err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
-	// err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, int(modTime), extra)
+	err := w.b.putInfoMetadata(w.ctx, w.key, rev, extra)
+	// err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
 	if err != nil {
 		return fmt.Errorf("write blob attributes: %v", err)
 	}
@@ -1059,7 +1061,7 @@ func (b *sqlbucket) Delete(ctx context.Context, key string) error {
 
 		query := `
 			PRAGMA foreign_keys=ON;
-			REPLACE INTO deleted(uuid, checkpoint) VALUES(IFNULL((SELECT uuid FROM notes WHERE title=?1), (SELECT uuid FROM recyclebin WHERE title=?2)), (SELECT checkpoint+1 FROM info WHERE name='info'));
+			REPLACE INTO deleted(uuid, checkpoint) VALUES(IFNULL((SELECT uuid FROM notes WHERE title=?1), (SELECT uuid FROM recyclebin WHERE title=?2)), (SELECT value+1 FROM info WHERE name='checkpoint'));
 			DELETE FROM notes WHERE title = ?3;
 			DELETE FROM recyclebin WHERE title= ?4;
 		`
