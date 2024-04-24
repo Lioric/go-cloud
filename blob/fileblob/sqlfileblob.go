@@ -98,7 +98,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			modified INTEGER NOT NULL,
 			modifier TEXT DEFAULT "",
 			revision INTEGER DEFAULT 0,
-			checkpoint INTEGER NOT NULL,
+			checkpoint INTEGER NOT NULL
 		);
 
 		CREATE TABLE extralist (
