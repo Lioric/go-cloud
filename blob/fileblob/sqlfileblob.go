@@ -28,7 +28,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"path/filepath"
 	"time"
 
@@ -154,7 +153,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		PRAGMA user_version=` + SCHEMA_VERSION + `;
 	`
 
-	log.Print(query)
+	// log.Print(query)
 
 	// INSERT INTO notes (id, title, created, revision, modifier) VALUES (0,` + TITLE_INFO_ENTRY + `, CURRENT_TIMESTAMP, 0, 0)
 
@@ -978,16 +977,16 @@ func (w InfoDataWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w InfoDataWriter) Close() error {
-	rev, ok := w.meta["rev"]
+	value, ok := w.meta["value"]
 	if ok == false {
-		return fmt.Errorf("no revision provided[%s]", w.key)
+		return fmt.Errorf("no value data provided[%s]", w.key)
 	}
 
 	extra := w.meta["extra"]
 	// mod := w.meta["mod"]
 	// modTime, _ := strconv.ParseInt(mod, 10, 0)
 
-	err := w.b.putInfoMetadata(w.ctx, w.key, rev, extra)
+	err := w.b.putInfoMetadata(w.ctx, w.key, value, extra)
 	// err := w.b.putInfoMetadata(w.ctx, w.key, w.id, rev, extra)
 	if err != nil {
 		return fmt.Errorf("write blob attributes: %v", err)
