@@ -85,7 +85,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE TABLE info (
 			name text NOT NULL UNIQUE,
 			value TEXT NOT NULL,
-			extra TEXT
+			extra TEXT,
+			checkpoint INTEGER NOT NULL DEFAULT -2
 		);
 
 		CREATE TABLE notes (
@@ -149,7 +150,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX modIndex ON notes(modified);
 		CREATE INDEX extraIndex ON extramap(noteId);
 
-		INSERT INTO info(rowid, name, value) VALUES (0,"` + CHECKPOINT_INFO_ENTRY + `", 0);
+		INSERT INTO info(name, value) VALUES ("` + CHECKPOINT_INFO_ENTRY + `", 0);
 		PRAGMA user_version=` + SCHEMA_VERSION + `;
 	`
 
@@ -439,7 +440,7 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, value stri
 	if db != nil {
 		defer db.Close()
 
-		query := `REPLACE INTO info(name, value, extra) values("` + keyName + `", ?, ?)`
+		query := `REPLACE INTO info(name, value, extra, checkpoint) values("` + keyName + `", ?, ?, (SELECT value+1 FROM info WHERE name='checkpoint'))`
 		// query := `REPLACE INTO info(name, version, checkpoint, extra) values("` + keyName + `", ?, ?, ?)`
 		// query := `REPLACE INTO info(name, version, rev, mod, extra) values("` + keyName + `", ?, ?, ?, ?)`
 
