@@ -55,6 +55,7 @@ type sqlbucket struct {
 
 var sPathSep = string(os.PathSeparator)
 
+const APP_FILE_ID string = "258081623"
 const SCHEMA_VERSION string = "1"
 const CHECKPOINT_INFO_ENTRY = "checkpoint"
 
@@ -82,14 +83,14 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 	defer sqlDB.Close()
 
 	query := `
-		CREATE TABLE info (
+		CREATE TABLE IF NOT EXISTS info (
 			name text NOT NULL UNIQUE,
 			value TEXT NOT NULL,
 			extra TEXT,
 			checkpoint INTEGER NOT NULL DEFAULT -2
 		);
 
-		CREATE TABLE notes (
+		CREATE TABLE IF NOT EXISTS notes (
 			id INTEGER PRIMARY KEY,
 			uuid TEXT UNIQUE NOT NULL,
 			title TEXT NOT NULL,
@@ -101,12 +102,12 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			checkpoint INTEGER NOT NULL
 		);
 
-		CREATE TABLE extralist (
+		CREATE TABLE IF NOT EXISTS extralist (
 			id INTEGER UNIQUE PRIMARY KEY,
 			name TEXT UNIQUE NOT NULL
 		);
 
-		CREATE TABLE extramap (
+		CREATE TABLE IF NOT EXISTS extramap (
 			noteId INTEGER NOT NULL,
 			extraId INTEGER NOT NULL,
 			value TEXT,
@@ -114,12 +115,12 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			FOREIGN KEY(extraId) REFERENCES extralist(id) ON UPDATE CASCADE ON DELETE CASCADE
 		 );
 
-		CREATE TABLE taglist (
+		CREATE TABLE IF NOT EXISTS taglist (
 			id INTEGER UNIQUE PRIMARY KEY,
 			tags TEXT UNIQUE NOT NULL
 		 );
 
-		 CREATE TABLE tagmap (
+		 CREATE TABLE IF NOT EXISTS tagmap (
 			noteId INTEGER NOT NULL,
 			tagId INTEGER NOT NULL,
 			FOREIGN KEY(noteId) REFERENCES notes(id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -127,7 +128,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			PRIMARY KEY (noteId,tagId)
 		 );
 
-		 CREATE TABLE recyclebin (
+		 CREATE TABLE IF NOT EXISTS recyclebin (
 			title TEXT UNIQUE NOT NULL,
 			uuid TEXT UNIQUE NOT NULL,
 			meta TEXT DEFAULT "",
@@ -146,11 +147,12 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 			value TEXT
 		);
 
-		CREATE UNIQUE INDEX titleIndex ON notes(title);
-		CREATE INDEX modIndex ON notes(modified);
-		CREATE INDEX extraIndex ON extramap(noteId);
+		CREATE UNIQUE INDEX IF NOT EXISTS titleIndex ON notes(title);
+		CREATE INDEX IF NOT EXISTS modIndex ON notes(modified);
+		CREATE INDEX IF NOT EXISTS extraIndex ON extramap(noteId);
 
-		INSERT INTO info(name, value) VALUES ("` + CHECKPOINT_INFO_ENTRY + `", 0);
+		INSERT OR IGNORE INTO info(name, value) VALUES ("` + CHECKPOINT_INFO_ENTRY + `", 0);
+		PRAGMA application_id=` + APP_FILE_ID + `;
 		PRAGMA user_version=` + SCHEMA_VERSION + `;
 	`
 
@@ -173,10 +175,10 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 
 	defer ftsDB.Close()
 
-	query = `CREATE table filters (
-		uuid TEXT PRIMARY KEY,
-		filter BLOB
-	)`
+	query = `CREATE TABLE IF NOT EXISTS filters(uuid TEXT UNIQUE PRIMARY KEY,filter BLOB);
+		CREATE TABLE IF NOT EXISTS info(name text NOT NULL UNIQUE,value TEXT NOT NULL,extra TEXT);
+		INSERT OR IGNORE INTO info(name,value) VALUES('checkpoint', '0');
+	`
 
 	_, err = ftsDB.Exec(query)
 	if err != nil {
