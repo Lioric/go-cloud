@@ -358,8 +358,8 @@ func (b *bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
 	_, err = os.Stat(curName)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// File doesn't exists, it can be a "no text" kibble
-			return nil
+			// File doesn't exists
+			return fileError{relpath: curName, msg: err.Error(), kind: driver.NotFound}
 		} else {
 			return err
 		}
