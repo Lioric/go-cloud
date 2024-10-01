@@ -354,6 +354,16 @@ func (b *bucket) Move(ctx context.Context, keySrc string, keyDst string) error {
 
 	curName := filepath.Join(b.dir, src)
 	fsName := filepath.Join(b.dir, dst)
+
+	_, err = os.Stat(curName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exists, it can be a "no text" kibble
+			return nil
+		} else {
+			return err
+		}
+	}
 	// curName := filepath.Join(b.dir, objName) + "." + TypeObject
 	// fsName := filepath.Join(b.dir, newObjName) + "." + TypeObject
 	err = os.Rename(curName, fsName)

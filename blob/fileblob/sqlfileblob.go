@@ -43,6 +43,9 @@ import (
 	// "github.com/Lioric/go-cloud/blob/fileblob"
 )
 
+// Key type for the context values
+type ctxKey string
+
 var DBName = ""
 var FTSExt = ""
 
@@ -58,6 +61,7 @@ var sPathSep = string(os.PathSeparator)
 const APP_FILE_ID string = "258081623"
 const SCHEMA_VERSION string = "1"
 const CHECKPOINT_INFO_ENTRY = "checkpoint"
+const USER_UUID_INFO_ENTRY = "useruuid"
 
 // var sBucketLocation string
 
@@ -74,6 +78,10 @@ const CHECKPOINT_INFO_ENTRY = "checkpoint"
 // }
 
 func createDB(ctx context.Context, name string) (*sql.DB, error) {
+	// Get context defined user info
+	uuid := ctx.Value(ctxKey("uuid")).(string)
+	// user := ctx.Value(ctxKey("user")).(string)
+
 	// Create metadata database
 	sqlDB, err := sql.Open("sqlite3", name)
 	if err != nil {
@@ -151,7 +159,8 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX IF NOT EXISTS modIndex ON notes(modified);
 		CREATE INDEX IF NOT EXISTS extraIndex ON extramap(noteId);
 
-		INSERT OR IGNORE INTO info(name, value) VALUES ("` + CHECKPOINT_INFO_ENTRY + `", 0);
+		INSERT OR IGNORE INTO info(name, value) VALUES ('` + CHECKPOINT_INFO_ENTRY + `', 0);
+		INSERT OR IGNORE INTO info(name, value) VALUES ('` + USER_UUID_INFO_ENTRY + `', ` + uuid + `);
 		PRAGMA application_id=` + APP_FILE_ID + `;
 		PRAGMA user_version=` + SCHEMA_VERSION + `;
 	`
@@ -1039,8 +1048,9 @@ func (w sqlWriter) Close() error {
 }
 
 // Move is used only by the revision system when creating
-// a new revision point before updating object with new contents,
-// no need to delete previous object or change metadata
+// a new revision point before updating object with new contents
+// (no need to delete previous object or change metadata)
+// and when moving objects to the recycle bin
 func (b *sqlbucket) Move(ctx context.Context, keySrc string, keyDst string) error {
 	return b.fileBucket.Move(ctx, keySrc, keyDst)
 }
