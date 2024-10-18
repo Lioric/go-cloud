@@ -161,7 +161,7 @@ func createDB(ctx context.Context, name string) (*sql.DB, error) {
 		CREATE INDEX IF NOT EXISTS extraIndex ON extramap(noteId);
 
 		INSERT OR IGNORE INTO info(name, value) VALUES ('` + CHECKPOINT_INFO_ENTRY + `', 0);
-		INSERT OR IGNORE INTO info(name, value) VALUES ('` + USER_UUID_INFO_ENTRY + `', ` + uuid + `);
+		INSERT OR IGNORE INTO info(name, value) VALUES ('` + USER_UUID_INFO_ENTRY + `', '` + uuid + `');
 		PRAGMA application_id=` + APP_FILE_ID + `;
 		PRAGMA user_version=` + SCHEMA_VERSION + `;
 	`
