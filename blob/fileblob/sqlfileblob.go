@@ -79,7 +79,12 @@ const USER_UUID_INFO_ENTRY = "useruuid"
 
 func createDB(ctx context.Context, name string) (*sql.DB, error) {
 	// Get context defined user info
-	uuid := ctx.Value("__mgn_var_uuid__").(string)
+	uuidVal := ctx.Value("__mgn_var_uuid__")
+	if uuidVal == nil {
+		return nil, fmt.Errorf("create metadata database %s: no uuid info in context", name)
+	}
+
+	uuid := uuidVal.(string)
 	// uuid := ctx.Value(ctxKey("uuid")).(string)
 	// user := ctx.Value(ctxKey("user")).(string)
 
