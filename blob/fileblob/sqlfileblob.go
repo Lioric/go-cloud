@@ -663,8 +663,8 @@ func _addMeta(tx *sql.Tx, name string, objName string, revision int64, id int, m
 }
 
 // Put mutliple metadata in a single transaction
-func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, id int, metaList []map[string]string) error {
-	sql, objName, _ := b.getMetadataElements(name)
+func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, metaList []map[string]string) error {
+	sql, _, _ := b.getMetadataElements(name)
 
 	db, err := openDB(ctx, sql)
 	if err != nil {
@@ -680,12 +680,13 @@ func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, id int, me
 		}
 
 		for _, meta := range metaList {
+			objName := meta["title"]
 			var rev int64 = 0
 			revision, _ := meta["revision"]
 			if len(revision) != 0 {
 				rev, _ = strconv.ParseInt(revision, 10, 0)
 			}
-			_addMeta(tx, name, objName, rev, id, meta)
+			_addMeta(tx, name, objName, rev, 0, meta)
 		}
 
 		err = tx.Commit()
