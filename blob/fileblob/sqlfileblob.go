@@ -49,7 +49,7 @@ type ctxKey string
 var DBName = ""
 var FTSExt = ""
 
-type sqlbucket struct {
+type Sqlbucket struct {
 	dir        string
 	fileBucket *bucket
 }
@@ -233,7 +233,7 @@ func openDB(ctx context.Context, name string) (*sql.DB, error) {
 	return sqlDB, nil
 }
 
-func (b *sqlbucket) getMetadataElements(key string) (string, string, string) {
+func (b *Sqlbucket) getMetadataElements(key string) (string, string, string) {
 	areaName := strings.SplitN(key, "/", 3)
 	area := areaName[0]
 	sql := b.dir + areaName[0] + sPathSep + MetaDir + sPathSep + DBName
@@ -244,7 +244,7 @@ func (b *sqlbucket) getMetadataElements(key string) (string, string, string) {
 	return sql, objName, area
 }
 
-func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key string) (*xattrs, error) {
+func (b *Sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key string) (*xattrs, error) {
 	list := strings.SplitN(key, "/", 2)
 	if len(list) < 2 {
 		return nil, fmt.Errorf("incorrect key id: %s", key)
@@ -292,7 +292,7 @@ func (b *sqlbucket) getInfoMetadata(ctx context.Context, sqlName string, key str
 	return xa, nil
 }
 
-func (b *sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*xattrs, error) {
+func (b *Sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*xattrs, error) {
 	sql, objName, _ := b.getMetadataElements(key)
 
 	if strings.HasPrefix(objName, "$:/") {
@@ -438,7 +438,7 @@ type extraField struct {
 }
 
 // Put info metadata
-func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, value string, extra string) error {
+func (b *Sqlbucket) putInfoMetadata(ctx context.Context, name string, value string, extra string) error {
 	// func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, id int, value string, extra string) error {
 	sql, key, _ := b.getMetadataElements(name)
 
@@ -663,7 +663,7 @@ func _addMeta(tx *sql.Tx, name string, objName string, revision int64, id int, m
 }
 
 // Put mutliple metadata in a single transaction
-func (b *sqlbucket) PutMetadataList(ctx context.Context, name string, id int, metaList []map[string]string) error {
+func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, id int, metaList []map[string]string) error {
 	sql, objName, _ := b.getMetadataElements(name)
 
 	db, err := openDB(ctx, sql)
@@ -702,7 +702,7 @@ func (b *sqlbucket) PutMetadataList(ctx context.Context, name string, id int, me
 }
 
 // Put metadata
-func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int64) error {
+func (b *Sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int64) error {
 	// func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int, extraFieldIds string) error {
 	sql, objName, _ := b.getMetadataElements(name)
 	// sql, _, _ := b.getMetadataElements(name)
@@ -949,11 +949,25 @@ func OpenSqlBucket(dir string) (*blob.Bucket, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("open file bucket: %s is not a directory", dir)
 	}
-	sqlb := sqlbucket{dir, &bucket{dir}}
+	sqlb := Sqlbucket{dir, &bucket{dir}}
 	// return blob.NewBucket(&bucket{dir}), nil
 
 	// fileBucket, err := NewBucket(dir)
 	return blob.NewBucket(&sqlb), err
+}
+
+// NewBucketDirect creates a new bucket that reads and writes to dir.
+// dir must exist.
+func OpenSqlBucketDirect(dir string) (*Sqlbucket, error) {
+	info, err := os.Stat(dir)
+	if err != nil {
+		return nil, fmt.Errorf("open file bucket: %v", err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("open file bucket: %s is not a directory", dir)
+	}
+	sqlb := Sqlbucket{dir, &bucket{dir}}
+	return &sqlb, err
 }
 
 // resolvePath converts a key into a relative filesystem path. It guarantees
@@ -982,7 +996,7 @@ func OpenSqlBucket(dir string) (*blob.Bucket, error) {
 // 	return filepath.FromSlash(key), nil
 // }
 
-func (b *sqlbucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
+func (b *Sqlbucket) Attributes(ctx context.Context, key string, isUID bool) (*driver.ObjectAttrs, error) {
 	// Get metadata
 	meta, err := b.getMetadata(ctx, key, isUID)
 	if err != nil {
@@ -1032,7 +1046,7 @@ func (b *sqlbucket) Attributes(ctx context.Context, key string, isUID bool) (*dr
 
 }
 
-func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
+func (b *Sqlbucket) NewRangeReader(ctx context.Context, key string, offset, length int64, exactKeyName bool) (driver.Reader, error) {
 	// if length < 1 {
 	// 	// Get metadata
 	// 	meta, err := b.getMetadata(ctx, key, length == -1)
@@ -1112,7 +1126,7 @@ func (b *sqlbucket) NewRangeReader(ctx context.Context, key string, offset, leng
 // 	}
 // }
 
-func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string) error {
+func (b *Sqlbucket) CreateArea(ctx context.Context, area string, groups []string) error {
 	err := b.fileBucket.CreateArea(ctx, area, groups)
 	if err != nil && !os.IsExist(err) {
 		return err
@@ -1155,7 +1169,7 @@ func (b *sqlbucket) CreateArea(ctx context.Context, area string, groups []string
 	return nil
 }
 
-func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType string, opt *driver.WriterOptions) (driver.Writer, error) {
+func (b *Sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType string, opt *driver.WriterOptions) (driver.Writer, error) {
 	if opt == nil {
 		opt = &driver.WriterOptions{}
 	}
@@ -1216,7 +1230,7 @@ func (b *sqlbucket) NewTypedWriter(ctx context.Context, key string, contentType 
 type InfoDataWriter struct {
 	ctx context.Context
 	// w        io.WriteCloser
-	b        *sqlbucket
+	b        *Sqlbucket
 	id       int
 	key      string
 	meta     map[string]string
@@ -1251,7 +1265,7 @@ type sqlWriter struct {
 	key      string
 	meta     map[string]string
 	revision int64
-	b        *sqlbucket
+	b        *Sqlbucket
 	id       int
 	// extra    string
 	ctx     context.Context
@@ -1290,11 +1304,11 @@ func (w sqlWriter) Close() error {
 // a new revision point before updating object with new contents
 // (no need to delete previous object or change metadata)
 // and when moving objects to the recycle bin
-func (b *sqlbucket) Move(ctx context.Context, keySrc string, keyDst string) error {
+func (b *Sqlbucket) Move(ctx context.Context, keySrc string, keyDst string) error {
 	return b.fileBucket.Move(ctx, keySrc, keyDst)
 }
 
-func (b *sqlbucket) Delete(ctx context.Context, key string) error {
+func (b *Sqlbucket) Delete(ctx context.Context, key string) error {
 	sql, objName, _ := b.getMetadataElements(key)
 
 	db, err := openDB(ctx, sql)
