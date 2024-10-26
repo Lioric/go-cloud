@@ -472,8 +472,237 @@ func (b *sqlbucket) putInfoMetadata(ctx context.Context, name string, value stri
 	return nil
 }
 
+func _addMeta(tx *sql.Tx, name string, objName string, revision int64, id int, meta map[string]string) error {
+	// var title string
+	title := objName
+	var uuid string
+	var tags string
+	var creator string
+	var created string
+	var modifier string
+	var modified string
+	// var revision int
+	// var previous string
+
+	extraFields := make([]extraField, 0, 10)
+
+	var fts []byte
+
+	for key, value := range meta {
+
+		switch key {
+		case "_uuid":
+			uuid = value
+		case "text":
+			// noop (text is stored in the data file)
+		case "title":
+			// title = value
+		case "tags":
+			tags = value
+		case "creator":
+			creator = value
+		case "created":
+			created = value
+		case "modified":
+			modified = value
+		case "modifier":
+			modifier = value
+		case "_index":
+			// Full text search filter is stored in a separated sql file
+			var err error
+			fts, err = base64.StdEncoding.DecodeString(value)
+			if err != nil {
+				fts = nil
+			}
+		case "checkpoint":
+		case "revision":
+			// rev, _ := strconv.ParseInt(value, 10, 0)
+			// revision = int(rev)
+		// case "previous":
+		// 	previous = value
+		default:
+			extraFields = append(extraFields, extraField{key, value})
+		}
+	}
+
+	var query string
+	// var rowIdStr = strconv.FormatInt(int64(id), 10)
+	// var filterQuery string
+
+	idStr := "null"
+
+	if id >= 0 {
+		idStr = strconv.FormatInt(int64(id), 10)
+	}
+
+	query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT value+1 FROM info WHERE name='checkpoint'))`
+	// query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT checkpoint+1 FROM info WHERE name='info'))`
+
+	rowRes, err := tx.Exec(query, uuid, title, creator, created, modified, modifier, revision)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("put metadata [%s]: %v", name, err)
+	}
+
+	noteId, _ := rowRes.LastInsertId()
+
+	// Tags
+	if len(tags) > 0 {
+		tagList := strings.Split(tags, ",")
+		tagValues := "('" + strings.Join(tagList, "'),('") + "')"
+		tagStr := "'" + strings.Join(tagList, "','") + "'"
+		query = (`INSERT OR IGNORE INTO taglist(tags) VALUES` + tagValues + `;
+					INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN (` + tagStr + `);`)
+
+		_, err = tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("put tags [%s]: %v", name, err)
+		}
+	}
+
+	// FTS filter
+	// var filterId string
+	// if id > 0 {
+	// 	filterId = rowIdStr
+	// } else {
+	// 	filterId = strconv.FormatInt(noteId, 10)
+	// }
+
+	if fts != nil {
+		// Insert Full text Search filter
+		query = `REPLACE into filters(uuid, filter) values('` + uuid + `', ?)`
+	} else {
+		query = `DELETE FROM filters WHERE uuid='` + uuid + "'"
+	}
+
+	_, err = tx.Exec(query, fts)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("put filter [%s]: %v", name, err)
+	}
+
+	// Extra fields
+	if noteId > 0 {
+		id = int(noteId)
+	}
+
+	if len(extraFields) > 0 {
+		extraNames := ""
+
+		for i, extra := range extraFields {
+			if i > 0 {
+				extraNames += ","
+			}
+
+			extraNames += "('" + extra.name + "')"
+		}
+
+		query = "INSERT OR IGNORE INTO extralist(name) VALUES" + extraNames + ";"
+		_, err = tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("put extra names [%s]: %v", name, err)
+		}
+
+		// Extra fields
+		extraSmtm, err := tx.Prepare(`INSERT INTO extramap (noteId,extraId,value) VALUES(?, (SELECT id FROM extralist WHERE name=?), ?)`)
+		// extraSmtm, err := tx.Prepare(`insert into extrafields(noteId, name, value) values(?, ?, ?)`)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("put metadata [%s]: %v", name, err)
+		}
+		defer extraSmtm.Close()
+
+		// extraRows := []string{}
+
+		for _, extraField := range extraFields {
+			_, err := extraSmtm.Exec(id, extraField.name, extraField.value)
+			// extraRow, err := extraSmtm.Exec(id, extraField.name, extraField.value)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("put metadata [%s]: %v", name, err)
+			}
+
+			// rowid, _ := extraRow.LastInsertId()
+			// extraRows = append(extraRows, strconv.FormatInt(rowid, 10))
+		}
+
+		// extraString := strings.Join(extraRows[:], ",")
+		// _, err = tx.Exec(`UPDATE notes SET fields = ? WHERE rowid = ?`, extraString, id)
+
+		// if err != nil {
+		// 	tx.Rollback()
+		// 	return fmt.Errorf("put metadata [%s]: %v", name, err)
+		// }
+
+		extraSmtm.Close()
+	}
+
+	// Full text search
+	//		if filter != nil {
+
+	//			ftsDB, err := openDB(ctx, sql+FTSExt)
+	//			if err != nil {
+	//				return err
+	//			}
+
+	//			if ftsDB != nil {
+	//				defer ftsDB.Close()
+
+	//				_, err := ftsDB.Exec(filterQuery, title, filter, noteId)
+	//				if err != nil {
+	//					return fmt.Errorf("put filter [%s]: %v", sql+FTSExt, err)
+	//				}
+
+	//			}
+
+	//		}
+
+	return err
+}
+
+// Put mutliple metadata in a single transaction
+func (b *sqlbucket) PutMetadataList(ctx context.Context, name string, id int, metaList []map[string]string) error {
+	sql, objName, _ := b.getMetadataElements(name)
+
+	db, err := openDB(ctx, sql)
+	if err != nil {
+		return err
+	}
+
+	if db != nil {
+		defer db.Close()
+
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("transaction [%s]: %v", name, err)
+		}
+
+		for _, meta := range metaList {
+			var rev int64 = 0
+			revision, _ := meta["revision"]
+			if len(revision) != 0 {
+				rev, _ = strconv.ParseInt(revision, 10, 0)
+			}
+			_addMeta(tx, name, objName, rev, id, meta)
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			tx.Rollback()
+
+			return fmt.Errorf("put metadata [%s]: %v", name, err)
+		}
+
+	}
+
+	return nil
+
+}
+
 // Put metadata
-func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int) error {
+func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int64) error {
 	// func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta map[string]string, revision int, extraFieldIds string) error {
 	sql, objName, _ := b.getMetadataElements(name)
 	// sql, _, _ := b.getMetadataElements(name)
@@ -497,6 +726,8 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			return fmt.Errorf("transaction [%s]: %v", name, err)
 		}
 
+		_addMeta(tx, name, objName, revision, id, meta)
+
 		// if len(extraFieldIds) > 0 {
 		// 	// Delete previous extra fields
 		// 	_, err := tx.Exec("delete from extrafields where rowid in (" + extraFieldIds + ")")
@@ -506,191 +737,193 @@ func (b *sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 		// 	}
 		// }
 
-		// var title string
-		title := objName
-		revision := revision
-		var uuid string
-		var tags string
-		var creator string
-		var created string
-		var modifier string
-		var modified string
-		// var revision int
-		// var previous string
+		/*
+			// var title string
+			title := objName
+			revision := revision
+			var uuid string
+			var tags string
+			var creator string
+			var created string
+			var modifier string
+			var modified string
+			// var revision int
+			// var previous string
 
-		extraFields := make([]extraField, 0, 10)
+			extraFields := make([]extraField, 0, 10)
 
-		var filter []byte
+			var filter []byte
 
-		for key, value := range meta {
+			for key, value := range meta {
 
-			switch key {
-			case "_uuid":
-				uuid = value
-			case "text":
-				// noop (text is stored in the data file)
-			case "title":
-				// title = value
-			case "tags":
-				tags = value
-			case "creator":
-				creator = value
-			case "created":
-				created = value
-			case "modified":
-				modified = value
-			case "modifier":
-				modifier = value
-			case "_index":
-				// Full text search filter is stored in a separated sql file
-				filter, err = base64.StdEncoding.DecodeString(value)
-				if err != nil {
-					filter = nil
+				switch key {
+				case "_uuid":
+					uuid = value
+				case "text":
+					// noop (text is stored in the data file)
+				case "title":
+					// title = value
+				case "tags":
+					tags = value
+				case "creator":
+					creator = value
+				case "created":
+					created = value
+				case "modified":
+					modified = value
+				case "modifier":
+					modifier = value
+				case "_index":
+					// Full text search filter is stored in a separated sql file
+					filter, err = base64.StdEncoding.DecodeString(value)
+					if err != nil {
+						filter = nil
+					}
+				case "checkpoint":
+				case "revision":
+					// rev, _ := strconv.ParseInt(value, 10, 0)
+					// revision = int(rev)
+				// case "previous":
+				// 	previous = value
+				default:
+					extraFields = append(extraFields, extraField{key, value})
 				}
-			case "checkpoint":
-			case "revision":
-				// rev, _ := strconv.ParseInt(value, 10, 0)
-				// revision = int(rev)
-			// case "previous":
-			// 	previous = value
-			default:
-				extraFields = append(extraFields, extraField{key, value})
-			}
-		}
-
-		var query string
-		// var rowIdStr = strconv.FormatInt(int64(id), 10)
-		// var filterQuery string
-
-		idStr := "null"
-
-		if id >= 0 {
-			idStr = strconv.FormatInt(int64(id), 10)
-		}
-
-		query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT value+1 FROM info WHERE name='checkpoint'))`
-		// query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT checkpoint+1 FROM info WHERE name='info'))`
-
-		rowRes, err := tx.Exec(query, uuid, title, creator, created, modified, modifier, revision)
-		if err != nil {
-			tx.Rollback()
-			return fmt.Errorf("put metadata [%s]: %v", name, err)
-		}
-
-		noteId, _ := rowRes.LastInsertId()
-
-		// Tags
-		if len(tags) > 0 {
-			tagList := strings.Split(tags, ",")
-			tagValues := "('" + strings.Join(tagList, "'),('") + "')"
-			tagStr := "'" + strings.Join(tagList, "','") + "'"
-			query = (`INSERT OR IGNORE INTO taglist(tags) VALUES` + tagValues + `;
-						INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN (` + tagStr + `);`)
-
-			_, err = tx.Exec(query)
-			if err != nil {
-				tx.Rollback()
-				return fmt.Errorf("put tags [%s]: %v", name, err)
-			}
-		}
-
-		// FTS filter
-		// var filterId string
-		// if id > 0 {
-		// 	filterId = rowIdStr
-		// } else {
-		// 	filterId = strconv.FormatInt(noteId, 10)
-		// }
-
-		if filter != nil {
-			// Insert Full text Search filter
-			query = `REPLACE into filters(uuid, filter) values('` + uuid + `', ?)`
-		} else {
-			query = `DELETE FROM filters WHERE uuid='` + uuid + "'"
-		}
-
-		_, err = tx.Exec(query, filter)
-		if err != nil {
-			tx.Rollback()
-			return fmt.Errorf("put filter [%s]: %v", name, err)
-		}
-
-		// Extra fields
-		if noteId > 0 {
-			id = int(noteId)
-		}
-
-		if len(extraFields) > 0 {
-			extraNames := ""
-
-			for i, extra := range extraFields {
-				if i > 0 {
-					extraNames += ","
-				}
-
-				extraNames += "('" + extra.name + "')"
 			}
 
-			query = "INSERT OR IGNORE INTO extralist(name) VALUES" + extraNames + ";"
-			_, err = tx.Exec(query)
-			if err != nil {
-				tx.Rollback()
-				return fmt.Errorf("put extra names [%s]: %v", name, err)
+			var query string
+			// var rowIdStr = strconv.FormatInt(int64(id), 10)
+			// var filterQuery string
+
+			idStr := "null"
+
+			if id >= 0 {
+				idStr = strconv.FormatInt(int64(id), 10)
 			}
 
-			// Extra fields
-			extraSmtm, err := tx.Prepare(`INSERT INTO extramap (noteId,extraId,value) VALUES(?, (SELECT id FROM extralist WHERE name=?), ?)`)
-			// extraSmtm, err := tx.Prepare(`insert into extrafields(noteId, name, value) values(?, ?, ?)`)
+			query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT value+1 FROM info WHERE name='checkpoint'))`
+			// query = `REPLACE INTO notes(id, uuid, title, creator, created, modified, modifier, revision, checkpoint) values(` + idStr + `, ?, ?, ?, ?, ?, ?, ?, (SELECT checkpoint+1 FROM info WHERE name='info'))`
+
+			rowRes, err := tx.Exec(query, uuid, title, creator, created, modified, modifier, revision)
 			if err != nil {
 				tx.Rollback()
 				return fmt.Errorf("put metadata [%s]: %v", name, err)
 			}
-			defer extraSmtm.Close()
 
-			// extraRows := []string{}
+			noteId, _ := rowRes.LastInsertId()
 
-			for _, extraField := range extraFields {
-				_, err := extraSmtm.Exec(id, extraField.name, extraField.value)
-				// extraRow, err := extraSmtm.Exec(id, extraField.name, extraField.value)
+			// Tags
+			if len(tags) > 0 {
+				tagList := strings.Split(tags, ",")
+				tagValues := "('" + strings.Join(tagList, "'),('") + "')"
+				tagStr := "'" + strings.Join(tagList, "','") + "'"
+				query = (`INSERT OR IGNORE INTO taglist(tags) VALUES` + tagValues + `;
+							INSERT OR IGNORE INTO tagmap(noteId, tagId) SELECT ` + strconv.FormatInt(noteId, 10) + `,taglist.id from taglist WHERE tags IN (` + tagStr + `);`)
+
+				_, err = tx.Exec(query)
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("put tags [%s]: %v", name, err)
+				}
+			}
+
+			// FTS filter
+			// var filterId string
+			// if id > 0 {
+			// 	filterId = rowIdStr
+			// } else {
+			// 	filterId = strconv.FormatInt(noteId, 10)
+			// }
+
+			if filter != nil {
+				// Insert Full text Search filter
+				query = `REPLACE into filters(uuid, filter) values('` + uuid + `', ?)`
+			} else {
+				query = `DELETE FROM filters WHERE uuid='` + uuid + "'"
+			}
+
+			_, err = tx.Exec(query, filter)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("put filter [%s]: %v", name, err)
+			}
+
+			// Extra fields
+			if noteId > 0 {
+				id = int(noteId)
+			}
+
+			if len(extraFields) > 0 {
+				extraNames := ""
+
+				for i, extra := range extraFields {
+					if i > 0 {
+						extraNames += ","
+					}
+
+					extraNames += "('" + extra.name + "')"
+				}
+
+				query = "INSERT OR IGNORE INTO extralist(name) VALUES" + extraNames + ";"
+				_, err = tx.Exec(query)
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("put extra names [%s]: %v", name, err)
+				}
+
+				// Extra fields
+				extraSmtm, err := tx.Prepare(`INSERT INTO extramap (noteId,extraId,value) VALUES(?, (SELECT id FROM extralist WHERE name=?), ?)`)
+				// extraSmtm, err := tx.Prepare(`insert into extrafields(noteId, name, value) values(?, ?, ?)`)
 				if err != nil {
 					tx.Rollback()
 					return fmt.Errorf("put metadata [%s]: %v", name, err)
 				}
+				defer extraSmtm.Close()
 
-				// rowid, _ := extraRow.LastInsertId()
-				// extraRows = append(extraRows, strconv.FormatInt(rowid, 10))
+				// extraRows := []string{}
+
+				for _, extraField := range extraFields {
+					_, err := extraSmtm.Exec(id, extraField.name, extraField.value)
+					// extraRow, err := extraSmtm.Exec(id, extraField.name, extraField.value)
+					if err != nil {
+						tx.Rollback()
+						return fmt.Errorf("put metadata [%s]: %v", name, err)
+					}
+
+					// rowid, _ := extraRow.LastInsertId()
+					// extraRows = append(extraRows, strconv.FormatInt(rowid, 10))
+				}
+
+				// extraString := strings.Join(extraRows[:], ",")
+				// _, err = tx.Exec(`UPDATE notes SET fields = ? WHERE rowid = ?`, extraString, id)
+
+				// if err != nil {
+				// 	tx.Rollback()
+				// 	return fmt.Errorf("put metadata [%s]: %v", name, err)
+				// }
+
+				extraSmtm.Close()
 			}
 
-			// extraString := strings.Join(extraRows[:], ",")
-			// _, err = tx.Exec(`UPDATE notes SET fields = ? WHERE rowid = ?`, extraString, id)
+			// Full text search
+			//		if filter != nil {
 
-			// if err != nil {
-			// 	tx.Rollback()
-			// 	return fmt.Errorf("put metadata [%s]: %v", name, err)
-			// }
+			//			ftsDB, err := openDB(ctx, sql+FTSExt)
+			//			if err != nil {
+			//				return err
+			//			}
 
-			extraSmtm.Close()
-		}
+			//			if ftsDB != nil {
+			//				defer ftsDB.Close()
 
-		// Full text search
-		//		if filter != nil {
+			//				_, err := ftsDB.Exec(filterQuery, title, filter, noteId)
+			//				if err != nil {
+			//					return fmt.Errorf("put filter [%s]: %v", sql+FTSExt, err)
+			//				}
 
-		//			ftsDB, err := openDB(ctx, sql+FTSExt)
-		//			if err != nil {
-		//				return err
-		//			}
+			//			}
 
-		//			if ftsDB != nil {
-		//				defer ftsDB.Close()
-
-		//				_, err := ftsDB.Exec(filterQuery, title, filter, noteId)
-		//				if err != nil {
-		//					return fmt.Errorf("put filter [%s]: %v", sql+FTSExt, err)
-		//				}
-
-		//			}
-
-		//		}
+			//		}
+		*/
 
 		err = tx.Commit()
 		if err != nil {
@@ -1017,7 +1250,7 @@ type sqlWriter struct {
 	w        io.WriteCloser
 	key      string
 	meta     map[string]string
-	revision int
+	revision int64
 	b        *sqlbucket
 	id       int
 	// extra    string

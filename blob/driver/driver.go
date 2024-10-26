@@ -60,9 +60,9 @@ type WriterOptions struct {
 	// multiple requests.
 	BufferSize int
 
-	// Tiddler metadata
+	// Kibble metadata
 	Metadata map[string]string
-	Revision int
+	Revision int64
 	// Extra options for platform specific implementations
 	Id    int
 	Name  string
@@ -83,7 +83,7 @@ type ObjectAttrs struct {
 	// Object metadata
 	Name     string
 	Fields   map[string]string
-	Revision int
+	Revision int64
 
 	Id    int
 	Extra string // platform specific
