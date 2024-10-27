@@ -63,7 +63,7 @@ type reader struct {
 	updated     time.Time
 
 	// Tiddler metadata
-	revision int
+	revision int64
 	metadata map[string]string
 }
 
@@ -118,7 +118,7 @@ func (b *bucket) Attributes(ctx context.Context, key string, isUID bool) (*drive
 		ModTime:     attrs.Updated,
 		Name:        attrs.Name,
 		Fields:      attrs.Metadata,
-		Revision:    int(rev),
+		Revision:    rev,
 		// Id,
 		// Extra,
 	}, nil
@@ -193,7 +193,7 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key string, contentType str
 		w.ChunkSize = bufferSize(opts.BufferSize)
 		// Tiddler metadata
 		w.Metadata = opts.Metadata
-		w.Metadata["revision"] = strconv.Itoa(opts.Revision)
+		w.Metadata["revision"] = strconv.FormatInt(opts.Revision, 10)
 	}
 	return w, nil
 }

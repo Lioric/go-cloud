@@ -32,7 +32,7 @@ type xattrs struct {
 
 	// Tiddler specific meta attributes
 	Meta     map[string]string `json:"meta"`
-	Revision int               `json:"revision"`
+	Revision int64             `json:"revision"`
 
 	Name string
 	// Extra options for platform specific implementations

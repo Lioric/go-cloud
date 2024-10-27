@@ -330,7 +330,7 @@ func (b *Sqlbucket) getMetadata(ctx context.Context, key string, isUID bool) (*x
 		var created string
 		var modifier string
 		var modified string
-		var revision int
+		var revision int64
 		// var extraFields string
 
 		isRow := rows.Next()
@@ -1235,7 +1235,7 @@ type InfoDataWriter struct {
 	id       int
 	key      string
 	meta     map[string]string
-	revision int
+	revision int64
 }
 
 func (w InfoDataWriter) Write(p []byte) (n int, err error) {

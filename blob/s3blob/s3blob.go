@@ -59,7 +59,7 @@ type reader struct {
 	modTime     time.Time
 
 	// Tiddler metadata
-	revision int
+	revision int64
 	metadata map[string]string
 }
 
@@ -98,7 +98,7 @@ type writer struct {
 	err error
 
 	// Tiddler specific meta attributes
-	revision int
+	revision int64
 	metadata map[string]string
 
 	// Extra options for platform specific implementationso
@@ -128,7 +128,7 @@ func (w *writer) createMetadata() map[string]*string {
 		metadata = make(map[string]*string)
 	}
 
-	rev := strconv.Itoa(w.revision)
+	rev := strconv.FormatInt(w.revision, 10)
 	metadata["revision"] = &rev
 	return metadata
 }
@@ -206,8 +206,9 @@ func (b *bucket) Attributes(ctx context.Context, key string, isUID bool) (*drive
 
 	val := aws.StringValue(resp.Metadata["revision"])
 	revision, _ := strconv.ParseInt(val, 10, 0)
-	intRevision := int(revision)
-	rev := aws.IntValue(&intRevision)
+	rev := aws.Int64Value(&revision)
+	// intRevision := int(revision)
+	// rev := aws.IntValue(&intRevision)
 
 	return &driver.ObjectAttrs{
 		Size:        aws.Int64Value(resp.ContentLength),
@@ -288,8 +289,9 @@ func (b *bucket) newMetadataReader(ctx context.Context, key string) (driver.Read
 
 	val := aws.StringValue(resp.Metadata["revision"])
 	revision, _ := strconv.ParseInt(val, 10, 0)
-	intRevision := int(revision)
-	rev := aws.IntValue(&intRevision)
+	rev := aws.Int64Value(&revision)
+	// intRevision := int(revision)
+	// rev := aws.IntValue(&intRevision)
 
 	return &reader{
 		body:        emptyBody,
