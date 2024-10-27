@@ -271,7 +271,7 @@ type WriterOptions struct {
 
 	// Tiddler metadata
 	Meta     map[string]string
-	Revision int
+	Revision int64
 	// Extra options for platform specific implementations
 	Id    int
 	Name  string
