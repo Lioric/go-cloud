@@ -77,7 +77,7 @@ func setAttrs(path string, xa *xattrs) error {
 	}
 
 	// Strore object rev
-	xa.Meta["revision"] = strconv.Itoa(xa.Revision)
+	xa.Meta["revision"] = strconv.FormatInt(xa.Revision, 10)
 	// Store content type
 	xa.Meta["content-type"] = xa.ContentType
 
@@ -125,7 +125,7 @@ func getAttrs(path string) (*xattrs, error) {
 	parseMetadata(f, xa)
 
 	rev, _ := strconv.ParseInt(xa.Meta["revision"], 10, 0)
-	xa.Revision = int(rev)
+	xa.Revision = rev
 	xa.ContentType = xa.Meta["content-type"]
 
 	return xa, f.Close()
