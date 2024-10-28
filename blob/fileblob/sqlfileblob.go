@@ -692,7 +692,10 @@ func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, metaList [
 			if len(revision) != 0 {
 				rev, _ = strconv.ParseInt(revision, 10, 0)
 			}
-			_addMeta(tx, name, objName, rev, 0, meta)
+			err = _addMeta(tx, name, objName, rev, 0, meta)
+			if err != nil {
+				return fmt.Errorf("put metadata [%s]: %v", name, err)
+			}
 		}
 
 		err = tx.Commit()
@@ -733,7 +736,10 @@ func (b *Sqlbucket) putMetadata(ctx context.Context, name string, id int, meta m
 			return fmt.Errorf("transaction [%s]: %v", name, err)
 		}
 
-		_addMeta(tx, name, objName, revision, id, meta)
+		err = _addMeta(tx, name, objName, revision, id, meta)
+		if err != nil {
+			return fmt.Errorf("put metadata [%s]: %v", name, err)
+		}
 
 		// if len(extraFieldIds) > 0 {
 		// 	// Delete previous extra fields
