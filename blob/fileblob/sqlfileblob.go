@@ -692,7 +692,12 @@ func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, metaList [
 			if len(revision) != 0 {
 				rev, _ = strconv.ParseInt(revision, 10, 0)
 			}
-			err = _addMeta(tx, name, objName, rev, 0, meta)
+			var id int64 = -1
+			idStr := meta["id"]
+			if len(idStr) != 0 {
+				id, _ = strconv.ParseInt(idStr, 10, 0)
+			}
+			err = _addMeta(tx, name, objName, rev, int(id), meta)
 			if err != nil {
 				return fmt.Errorf("put metadata [%s]: %v", name, err)
 			}
