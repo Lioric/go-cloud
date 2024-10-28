@@ -674,6 +674,12 @@ func (b *Sqlbucket) PutMetadataList(ctx context.Context, name string, metaList [
 	if db != nil {
 		defer db.Close()
 
+		// Enable foreing keys constrains and attach FullTextSearch database
+		_, err = db.Exec("PRAGMA foreign_keys=ON; ATTACH DATABASE \"" + sql + FTSExt + "\" AS FTS;")
+		if err != nil {
+			return fmt.Errorf("setup db connection [%s]: %v", name, err)
+		}
+
 		tx, err := db.Begin()
 		if err != nil {
 			return fmt.Errorf("transaction [%s]: %v", name, err)
